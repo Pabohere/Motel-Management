@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Motel Myanmar";
+  src: url("fonts/noto-sans-myanmar-variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 62.5% 100%;
+  font-display: swap;
+}
 /* Reference glass — white, mint, coral, and pastel accents. */
 :root { --mint: #10b779; --coral: #e66e61; --accent: #e5754b; --mint-tint: #e8f5ed; --teal: #25765b; --ink: #292933; --muted: #6b6f79; --green: var(--teal); --blue: #318168; --orange: #ad5638; --line: #6e71841f; --soft: #edf5ef; --surface: #ffffff; --border: #7275872b; }
 body { background: #e7e6ec; background-image: radial-gradient(ellipse at 9% 20%, #f3e5ddb3, transparent 45%), radial-gradient(ellipse at 88% 0%, #dce5efad, transparent 44%), radial-gradient(ellipse at 65% 90%, #e4d8efb3, transparent 50%); background-attachment: fixed; -webkit-font-smoothing: antialiased; }
@@ -280,3 +288,28 @@ td small, .room-guest small, .room-card>p, .text-link { font-size: 13px; font-we
 }
 .sidebar { overflow-y: auto; scrollbar-width: thin; }
 .sidebar-bottom { padding-bottom: 8px; }
+
+/* Rounded Myanmar letterforms with real Black/Bold font weights. */
+body {
+  font-family: "Motel Myanmar", "Noto Sans Myanmar", "Myanmar MN", sans-serif;
+  font-variation-settings: "wdth" 100;
+  font-synthesis: none;
+  font-weight: 600;
+}
+h1, h2, .login-form h2, .login-intro h1 {
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.9;
+}
+nav>a, nav>a.active, .panel-toolbar h2, .booking-toolbar h2 { font-weight: 800; }
+label, .btn, .btn.coral, .btn.secondary, .btn.small, th, .guest-table th,
+.summary-card>span:last-child, .map-legend>span, .clean-room-button { font-weight: 700; }
+.guest-name strong, .sidebar-bottom strong { font-weight: 800; }
+.summary-card strong small, .stat strong small {
+  font-family: "Motel Myanmar", "Noto Sans Myanmar", sans-serif;
+  font-weight: 700;
+}
+input, select, textarea { font-family: inherit; font-weight: 600; }
+.sidebar nav>a { line-height: 1.8; }
+.panel-toolbar { flex-wrap: wrap; }
+.summary-card .money-metric { line-height: 1.4; overflow-y: hidden; padding-bottom: 3px; }
