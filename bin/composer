@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+MOTEL_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$MOTEL_ROOT"
+if [ -x "$MOTEL_ROOT/.tools/php" ] && [ -f "$MOTEL_ROOT/.tools/composer" ]; then
+    export PATH="$MOTEL_ROOT/.tools:$PATH"
+    exec "$MOTEL_ROOT/.tools/php" -d "openssl.cafile=$MOTEL_ROOT/.tools/cacert.pem" -d "curl.cainfo=$MOTEL_ROOT/.tools/cacert.pem" "$MOTEL_ROOT/.tools/composer" "$@"
+fi
+exec composer "$@"

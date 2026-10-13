@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Payment;
+use App\Models\Room;
+use App\Models\Stay;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+
+class ReportController extends Controller
+{
+    public function __invoke(Request $request)
+    {
+        $data = $request->validate(['date' => 'nullable|date_format:Y-m-d|before_or_equal:today']);
+        $date = $data['date'] ?? today()->toDateString();
+        $start = Carbon::parse($date)->startOfDay();
+        $end = $start->copy()->addDay();
+        $checkIns = Stay::with('room')->where('check_in_at', '>=', $start)->where('check_in_at', '<', $end)->get();
+        $checkOuts = Stay::with('room')->where('check_out_at', '>=', $start)->where('check_out_at', '<', $end)->get();
+        $payments = Payment::with(['stay.room', 'creator'])->where('created_at', '>=', $start)->where('created_at', '<', $end)->latest()->get();
+        $asOf = $end->isFuture() ? now() : $end->copy()->subSecond();
+        $occupied = Stay::where('check_in_at', '<=', $asOf)->where(fn ($q) => $q->whereNull('check_out_at')->orWhere('check_out_at', '>', $asOf))->distinct()->count('room_id');
+        $totalRooms = Room::where('created_at', '<=', $asOf)->count();
+        $outstanding = Stay::with(['charges', 'payments'])->get()->sum(fn ($stay) => $stay->balance);
+
+        return view('reports.daily', compact('date', 'checkIns', 'checkOuts', 'payments', 'occupied', 'totalRooms', 'outstanding'));
+    }
+}

@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+MOTEL_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$MOTEL_ROOT"
+if [ -x "$MOTEL_ROOT/.tools/php" ]; then
+    MOTEL_PHP="$MOTEL_ROOT/.tools/php"
+    export PATH="$MOTEL_ROOT/.tools:$PATH"
+elif command -v php >/dev/null 2>&1; then
+    MOTEL_PHP=$(command -v php)
+else
+    echo "PHP 8.3+ is required. Install PHP and Composer, then see README.md." >&2
+    exit 1
+fi
+exec "$MOTEL_PHP" artisan "$@"
