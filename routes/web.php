@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\MonthlyReportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StayController;
@@ -24,12 +26,16 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/stays/create', [StayController::class, 'create'])->name('stays.create');
     Route::post('/stays', [StayController::class, 'store'])->name('stays.store');
     Route::get('/stays/{stay}', [StayController::class, 'show'])->name('stays.show');
+    Route::get('/stays/{stay}/identity', [StayController::class, 'identityDocument'])->name('stays.identity');
     Route::put('/stays/{stay}', [StayController::class, 'update'])->name('stays.update');
     Route::post('/stays/{stay}/charges', [StayController::class, 'charge'])->name('stays.charges');
     Route::post('/stays/{stay}/payments', [StayController::class, 'payment'])->middleware('throttle:30,1')->name('stays.payments');
     Route::post('/stays/{stay}/checkout', [StayController::class, 'checkOut'])->name('stays.checkout');
     Route::get('/reports/daily', ReportController::class)->name('reports.daily');
     Route::middleware('manager')->group(function () {
+        Route::get('/reports/monthly', [MonthlyReportController::class, 'index'])->name('reports.monthly');
+        Route::get('/reports/monthly/export', [MonthlyReportController::class, 'export'])->name('reports.monthly.export');
+        Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
         Route::post('/rooms', [RoomController::class, 'store'])->name('rooms.store');
         Route::get('/rooms/{room}/edit', [RoomController::class, 'edit'])->name('rooms.edit');
         Route::put('/rooms/{room}', [RoomController::class, 'update'])->name('rooms.update');

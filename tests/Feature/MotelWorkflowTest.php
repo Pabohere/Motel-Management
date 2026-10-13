@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
+use App\Models\Expense;
 use App\Models\Room;
 use App\Models\Stay;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class MotelWorkflowTest extends TestCase
@@ -205,5 +208,77 @@ class MotelWorkflowTest extends TestCase
         $this->put('/password', ['current_password' => 'wrong', 'password' => 'new-long-password', 'password_confirmation' => 'new-long-password'])->assertSessionHasErrors('current_password');
         $this->put('/password', ['current_password' => 'initial-long-password', 'password' => 'new-long-password', 'password_confirmation' => 'new-long-password'])->assertSessionHasNoErrors();
         $this->assertTrue(Hash::check('new-long-password', $this->staff->fresh()->password));
+    }
+
+    public function test_monthly_report_counts_received_money_and_dated_expenses_with_manager_access(): void
+    {
+        $stay = $this->checkIn();
+        $this->get(route('reports.monthly'))->assertForbidden();
+        $this->get(route('reports.monthly.export'))->assertForbidden();
+        $this->post(route('expenses.store'), [])->assertForbidden();
+
+        $this->staff->update(['role' => 'manager']);
+        $this->actingAs($this->staff);
+        $this->post(route('expenses.store'), ['expense_date' => '2026-09-30', 'category' => 'utilities', 'description' => 'September power', 'amount' => 3000])->assertSessionHasNoErrors();
+        $this->post(route('expenses.store'), ['expense_date' => '2026-10-12', 'category' => 'maintenance', 'description' => 'Repair', 'amount' => 4000])->assertSessionHasNoErrors();
+        $this->post(route('expenses.store'), ['expense_date' => '2026-10-14', 'category' => 'other', 'description' => 'Future', 'amount' => 100])->assertSessionHasErrors('expense_date');
+        $this->post(route('expenses.store'), ['expense_date' => '2026-10-13', 'category' => 'other', 'description' => 'Invalid', 'amount' => -1])->assertSessionHasErrors('amount');
+        $this->assertSame(2, Expense::count());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'expense.created', 'user_id' => $this->staff->id]);
+
+        $this->get(route('reports.monthly', ['month' => '2026-10']))->assertOk()->assertViewHas('income', 10000)->assertViewHas('outgoings', 4000)->assertViewHas('net', 6000)->assertSee('Repair');
+        $this->get(route('reports.monthly', ['month' => '2026-09']))->assertOk()->assertViewHas('income', 0)->assertViewHas('outgoings', 3000)->assertViewHas('net', -3000);
+        $this->get(route('reports.monthly', ['month' => 'not-a-month']))->assertSessionHasErrors('month');
+        $csv = $this->get(route('reports.monthly.export', ['month' => '2026-10']))->assertOk()->streamedContent();
+        $this->assertStringContainsString('2026-10', $csv);
+        $this->assertStringContainsString('Repair', $csv);
+        $this->assertStringNotContainsString('September power', $csv);
+    }
+
+    public function test_identity_files_are_private_validated_replaceable_and_downloadable_after_checkout(): void
+    {
+        Storage::fake('local');
+        $stay = $this->checkIn(['identity_document' => UploadedFile::fake()->create('identity.pdf', 20, 'application/pdf')]);
+        $firstPath = $stay->identity_document_path;
+        $this->assertNotNull($firstPath);
+        Storage::disk('local')->assertExists($firstPath);
+        $this->get(route('stays.index'))->assertSee('Download');
+        $this->get(route('stays.identity', $stay))->assertOk()->assertDownload();
+
+        $this->post(route('stays.store'), [
+            'room_id' => $this->room->id, 'guest_name' => 'Bad file', 'phone' => '09',
+            'check_in_at' => now()->subMinute()->toDateTimeString(), 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
+            'room_charge' => 35000, 'deposit' => 0, 'method' => 'cash',
+            'identity_document' => UploadedFile::fake()->create('script.txt', 1, 'text/plain'),
+        ])->assertSessionHasErrors('identity_document');
+        $this->put(route('stays.update', $stay), [
+            'guest_name' => 'Test Guest', 'phone' => '09123456789', 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
+            'identity_document' => UploadedFile::fake()->create('large.pdf', 6000, 'application/pdf'),
+        ])->assertSessionHasErrors('identity_document');
+
+        $this->put(route('stays.update', $stay), [
+            'guest_name' => 'Test Guest', 'phone' => '09123456789', 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
+            'identity_document' => UploadedFile::fake()->create('new.pdf', 20, 'application/pdf'),
+        ])->assertSessionHasNoErrors();
+        Storage::disk('local')->assertMissing($firstPath);
+        Storage::disk('local')->assertExists($stay->fresh()->identity_document_path);
+        $this->post(route('stays.payments', $stay), ['amount' => 25000, 'method' => 'cash'])->assertSessionHasNoErrors();
+        $this->post(route('stays.checkout', $stay))->assertSessionHasNoErrors();
+        $this->get(route('stays.identity', $stay))->assertOk()->assertDownload();
+        $this->get(route('stays.show', $stay))->assertOk()->assertSee('Download');
+        auth()->logout();
+        $this->get(route('stays.identity', $stay))->assertRedirect('/login');
+    }
+
+    public function test_monthly_income_uses_yangon_month_boundaries(): void
+    {
+        $this->travelTo(now()->setDate(2026, 10, 31)->setTime(23, 59));
+        $stay = $this->checkIn(['deposit' => 0]);
+        $this->post(route('stays.payments', $stay), ['amount' => 10000, 'method' => 'cash'])->assertSessionHasNoErrors();
+        $this->travelTo(now()->addMinutes(2));
+        $this->post(route('stays.payments', $stay), ['amount' => 25000, 'method' => 'card'])->assertSessionHasNoErrors();
+        $this->staff->update(['role' => 'manager']);
+        $this->get(route('reports.monthly', ['month' => '2026-10']))->assertViewHas('income', 10000);
+        $this->get(route('reports.monthly', ['month' => '2026-11']))->assertViewHas('income', 25000);
     }
 }

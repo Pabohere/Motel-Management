@@ -313,3 +313,33 @@ input, select, textarea { font-family: inherit; font-weight: 600; }
 .sidebar nav>a { line-height: 1.8; }
 .panel-toolbar { flex-wrap: wrap; }
 .summary-card .money-metric { line-height: 1.4; overflow-y: hidden; padding-bottom: 3px; }
+
+/* Monthly ledger and private identity uploads. */
+input[type="file"] { width: 100%; max-width: 100%; padding: 10px; cursor: pointer; }
+label>small { display: block; margin-top: 6px; line-height: 1.6; }
+.report-actions { align-items: center; flex-wrap: wrap; }
+.report-actions input[type="month"] { min-width: 168px; }
+.monthly-stats .stat { min-width: 0; }
+.monthly-stats .stat>strong { font-size: clamp(23px, 2.2vw, 34px); overflow-wrap: anywhere; }
+.monthly-ledgers { align-items: start; }
+.monthly-ledgers>.panel { min-width: 0; }
+.monthly-breakdown { display: flex; flex-wrap: wrap; gap: 16px 25px; margin-bottom: 18px; }
+.monthly-breakdown>div { min-width: 105px; }
+.monthly-breakdown strong { display: block; font-size: 16px; }
+.monthly-table-scroll { overflow-x: auto; }
+.monthly-table-scroll table { width: 100%; min-width: 480px; }
+.monthly-table-scroll th, .monthly-table-scroll td { padding: 11px 8px; }
+.monthly-table-scroll td small { display: block; }
+.expense-form-panel .form-grid { margin-bottom: 18px; }
+@media(max-width:1600px) { .monthly-ledgers { grid-template-columns: 1fr; } }
+@media(max-width:900px) { .monthly-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width:550px) { .monthly-stats .stat>strong { font-size: 22px; } .report-actions { width: 100%; } }
+@media print {
+  body { background: white !important; color: #151b1b; }
+  body::before, .sidebar, .topbar, .report-actions, .expense-form-panel, footer { display: none !important; }
+  main { margin: 0 !important; } .content { max-width: none; padding: 0; }
+  .panel, .stat, .daily-strip { background: white !important; box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }
+  .monthly-ledgers { display: block; } .monthly-ledgers>.panel { margin-bottom: 16px; }
+  .monthly-table-scroll { overflow: visible; } .monthly-table-scroll table { min-width: 0; }
+  a { color: inherit; } @page { size: A4; margin: 12mm; }
+}

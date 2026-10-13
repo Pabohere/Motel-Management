@@ -8,8 +8,11 @@ use App\Services\Audit;
 use App\Services\FrontDesk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class StayController extends Controller
 {
@@ -40,8 +43,18 @@ class StayController extends Controller
             'check_in_at' => 'required|date|before_or_equal:now', 'expected_check_out_at' => 'required|date|after:check_in_at|after:now',
             'room_charge' => 'required|integer|min:0|max:100000000', 'deposit' => 'required|integer|min:0|lte:room_charge',
             'method' => ['required', Rule::in(['cash', 'transfer', 'card'])],
+            'identity_document' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
         ]);
-        $stay = $desk->checkIn($data);
+        $path = $request->file('identity_document')?->store('guest-identities', 'local');
+        unset($data['identity_document']);
+        try {
+            $stay = $desk->checkIn([...$data, 'identity_document_path' => $path]);
+        } catch (Throwable $exception) {
+            if ($path) {
+                Storage::disk('local')->delete($path);
+            }
+            throw $exception;
+        }
 
         return redirect()->route('stays.show', $stay)->with('success', 'Check-in လုပ်ပြီးပါပြီ။');
     }
@@ -55,16 +68,30 @@ class StayController extends Controller
 
     public function update(Request $request, Stay $stay)
     {
-        $data = $request->validate(['guest_name' => 'required|string|max:150', 'phone' => 'required|string|max:40', 'notes' => 'nullable|string|max:2000', 'expected_check_out_at' => 'required|date|after:'.$stay->check_in_at->toDateTimeString().'|after:now']);
-        DB::transaction(function () use ($stay, $data) {
-            $locked = Stay::lockForUpdate()->findOrFail($stay->id);
-            if ($locked->check_out_at) {
-                throw ValidationException::withMessages(['operation' => 'ထွက်ပြီးမှ ပြင်၍မရပါ။']);
+        $data = $request->validate(['guest_name' => 'required|string|max:150', 'phone' => 'required|string|max:40', 'notes' => 'nullable|string|max:2000', 'expected_check_out_at' => 'required|date|after:'.$stay->check_in_at->toDateTimeString().'|after:now', 'identity_document' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120']);
+        $path = $request->file('identity_document')?->store('guest-identities', 'local');
+        unset($data['identity_document']);
+        $oldPath = null;
+        try {
+            DB::transaction(function () use ($stay, $data, $path, &$oldPath): void {
+                $locked = Stay::lockForUpdate()->findOrFail($stay->id);
+                if ($locked->check_out_at) {
+                    throw ValidationException::withMessages(['operation' => 'ထွက်ပြီးမှ ပြင်၍မရပါ။']);
+                }
+                $before = $locked->toArray();
+                $oldPath = $locked->identity_document_path;
+                $locked->update($path ? [...$data, 'identity_document_path' => $path] : $data);
+                Audit::record('stay.updated', $locked, $before, $locked->toArray());
+            });
+        } catch (Throwable $exception) {
+            if ($path) {
+                Storage::disk('local')->delete($path);
             }
-            $before = $locked->toArray();
-            $locked->update($data);
-            Audit::record('stay.updated', $locked, $before, $locked->toArray());
-        });
+            throw $exception;
+        }
+        if ($path && $oldPath) {
+            Storage::disk('local')->delete($oldPath);
+        }
 
         return back()->with('success', 'ဧည့်သည်အချက်အလက် ပြင်ပြီးပါပြီ။');
     }
@@ -75,6 +102,13 @@ class StayController extends Controller
         $desk->charge($stay, $data);
 
         return back()->with('success', 'အပိုကျသင့်ငွေ ထည့်ပြီးပါပြီ။');
+    }
+
+    public function identityDocument(Stay $stay): StreamedResponse
+    {
+        abort_unless($stay->identity_document_path && Storage::disk('local')->exists($stay->identity_document_path), 404);
+
+        return Storage::disk('local')->download($stay->identity_document_path, 'guest-'.$stay->id.'-identity.'.pathinfo($stay->identity_document_path, PATHINFO_EXTENSION));
     }
 
     public function payment(Request $request, Stay $stay, FrontDesk $desk)
