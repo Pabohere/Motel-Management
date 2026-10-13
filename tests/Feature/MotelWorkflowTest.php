@@ -235,39 +235,80 @@ class MotelWorkflowTest extends TestCase
         $this->assertStringNotContainsString('September power', $csv);
     }
 
-    public function test_identity_files_are_private_validated_replaceable_and_downloadable_after_checkout(): void
+    public function test_up_to_five_identity_files_have_private_inline_previews(): void
     {
         Storage::fake('local');
-        $stay = $this->checkIn(['identity_document' => UploadedFile::fake()->create('identity.pdf', 20, 'application/pdf')]);
-        $firstPath = $stay->identity_document_path;
-        $this->assertNotNull($firstPath);
-        Storage::disk('local')->assertExists($firstPath);
-        $this->get(route('stays.index'))->assertSee('Download');
-        $this->get(route('stays.identity', $stay))->assertOk()->assertDownload();
+        $stay = $this->checkIn(['identity_documents' => [
+            UploadedFile::fake()->create('front.jpg', 20, 'image/jpeg'),
+            UploadedFile::fake()->create('back.png', 20, 'image/png'),
+            UploadedFile::fake()->create('letter.pdf', 20, 'application/pdf'),
+        ]]);
+        $this->assertSame(3, $stay->identityDocuments()->count());
+        $first = $stay->identityDocuments()->firstOrFail();
+        Storage::disk('local')->assertExists($first->path);
+        $this->get(route('stays.index'))->assertOk()->assertSee('3 ဖိုင်');
+        $this->get(route('stays.show', $stay))->assertOk()->assertSee('identity-preview-dialog');
+        $preview = $this->get(route('stays.identity.show', [$stay, $first]))->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        $this->assertStringStartsWith('inline;', $preview->headers->get('Content-Disposition'));
+        $this->get(route('stays.identity', $stay))->assertOk();
+        $pdf = $stay->identityDocuments()->orderBy('id')->skip(2)->firstOrFail();
+        $this->get(route('stays.identity.show', [$stay, $pdf]))->assertOk()->assertHeader('Content-Type', 'application/pdf');
+
+        $update = ['guest_name' => 'Test Guest', 'phone' => '09123456789', 'expected_check_out_at' => now()->addDay()->toDateTimeString()];
+        $this->put(route('stays.update', $stay), [...$update, 'identity_documents' => [
+            UploadedFile::fake()->create('extra-1.webp', 20, 'image/webp'),
+            UploadedFile::fake()->create('extra-2.jpg', 20, 'image/jpeg'),
+        ]])->assertSessionHasNoErrors();
+        $this->assertSame(5, $stay->identityDocuments()->count());
+        $this->put(route('stays.update', $stay), [...$update, 'identity_documents' => [
+            UploadedFile::fake()->create('sixth.jpg', 20, 'image/jpeg'),
+        ]])->assertSessionHasErrors('identity_documents');
+        $this->assertSame(5, $stay->identityDocuments()->count());
+        Storage::disk('local')->assertExists($first->path);
 
         $this->post(route('stays.store'), [
             'room_id' => $this->room->id, 'guest_name' => 'Bad file', 'phone' => '09',
             'check_in_at' => now()->subMinute()->toDateTimeString(), 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
             'room_charge' => 35000, 'deposit' => 0, 'method' => 'cash',
-            'identity_document' => UploadedFile::fake()->create('script.txt', 1, 'text/plain'),
-        ])->assertSessionHasErrors('identity_document');
-        $this->put(route('stays.update', $stay), [
-            'guest_name' => 'Test Guest', 'phone' => '09123456789', 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
-            'identity_document' => UploadedFile::fake()->create('large.pdf', 6000, 'application/pdf'),
-        ])->assertSessionHasErrors('identity_document');
+            'identity_documents' => [UploadedFile::fake()->create('script.txt', 1, 'text/plain')],
+        ])->assertSessionHasErrors('identity_documents.0');
+        $this->put(route('stays.update', $stay), [...$update, 'identity_documents' => [
+            UploadedFile::fake()->create('large.pdf', 6000, 'application/pdf'),
+        ]])->assertSessionHasErrors('identity_documents.0');
 
-        $this->put(route('stays.update', $stay), [
-            'guest_name' => 'Test Guest', 'phone' => '09123456789', 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
-            'identity_document' => UploadedFile::fake()->create('new.pdf', 20, 'application/pdf'),
-        ])->assertSessionHasNoErrors();
-        Storage::disk('local')->assertMissing($firstPath);
-        Storage::disk('local')->assertExists($stay->fresh()->identity_document_path);
+        $otherRoom = Room::create(['number' => '102', 'type' => 'Standard', 'rate' => 35000]);
+        $otherStay = Stay::create([
+            'room_id' => $otherRoom->id, 'active_room_id' => $otherRoom->id, 'guest_name' => 'Other guest',
+            'phone' => '09', 'check_in_at' => now(), 'expected_check_out_at' => now()->addDay(),
+            'room_charge' => 35000, 'created_by' => $this->staff->id,
+        ]);
+        $this->get(route('stays.identity.show', [$otherStay, $first]))->assertNotFound();
         $this->post(route('stays.payments', $stay), ['amount' => 25000, 'method' => 'cash'])->assertSessionHasNoErrors();
         $this->post(route('stays.checkout', $stay))->assertSessionHasNoErrors();
-        $this->get(route('stays.identity', $stay))->assertOk()->assertDownload();
-        $this->get(route('stays.show', $stay))->assertOk()->assertSee('Download');
+        $this->get(route('stays.identity.show', [$stay, $first]))->assertOk();
+        $this->put(route('stays.update', $stay), $update)->assertSessionHasErrors('operation');
         auth()->logout();
-        $this->get(route('stays.identity', $stay))->assertRedirect('/login');
+        $this->get(route('stays.identity.show', [$stay, $first]))->assertRedirect('/login');
+    }
+
+    public function test_six_identity_uploads_are_rejected_before_check_in_and_failed_check_in_cleans_files(): void
+    {
+        Storage::fake('local');
+        $data = [
+            'room_id' => $this->room->id, 'guest_name' => 'Guest', 'phone' => '09',
+            'check_in_at' => now()->subMinute()->toDateTimeString(), 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
+            'room_charge' => 35000, 'deposit' => 0, 'method' => 'cash',
+        ];
+        $this->actingAs($this->staff)->post(route('stays.store'), [...$data, 'identity_documents' => array_map(
+            fn (int $number) => UploadedFile::fake()->create("identity-$number.jpg", 20, 'image/jpeg'),
+            range(1, 6)
+        )])->assertSessionHasErrors('identity_documents');
+        $this->assertSame(0, Stay::count());
+        $this->assertSame([], Storage::disk('local')->allFiles('guest-identities'));
+
+        $this->room->update(['status' => 'maintenance']);
+        $this->post(route('stays.store'), [...$data, 'identity_documents' => [UploadedFile::fake()->create('id.jpg', 20, 'image/jpeg')]])->assertSessionHasErrors('operation');
+        $this->assertSame([], Storage::disk('local')->allFiles('guest-identities'));
     }
 
     public function test_monthly_income_uses_yangon_month_boundaries(): void

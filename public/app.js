@@ -54,3 +54,32 @@ document.getElementById('guest-sort')?.addEventListener('change', event => {
   const emptyRow = document.getElementById('guest-empty-row');
   guestRows.forEach(row => body.insertBefore(row, emptyRow));
 });
+
+document.querySelectorAll('input[data-max-files]').forEach(input => {
+  input.addEventListener('change', () => {
+    const remaining = Number(input.dataset.maxFiles);
+    if (input.files.length > remaining) {
+      input.value = '';
+      window.alert(`နောက်ထပ် ${remaining} ဖိုင်အထိသာ တင်နိုင်ပါသည်။`);
+    }
+  });
+});
+
+const identityDialog = document.getElementById('identity-preview-dialog');
+if (identityDialog && typeof identityDialog.showModal === 'function') {
+  const image = identityDialog.querySelector('img');
+  const frame = identityDialog.querySelector('iframe');
+  document.querySelectorAll('[data-identity-preview]').forEach(link => {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      image.hidden = link.dataset.kind !== 'image';
+      frame.hidden = link.dataset.kind !== 'pdf';
+      if (image.hidden) frame.src = link.href;
+      else image.src = link.href;
+      identityDialog.showModal();
+    });
+  });
+  identityDialog.querySelector('.identity-close').addEventListener('click', () => identityDialog.close());
+  identityDialog.addEventListener('click', event => { if (event.target === identityDialog) identityDialog.close(); });
+  identityDialog.addEventListener('close', () => { image.removeAttribute('src'); frame.removeAttribute('src'); });
+}

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Stay extends Model
 {
@@ -26,6 +27,11 @@ class Stay extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function identityDocuments(): HasMany
+    {
+        return $this->hasMany(StayIdentityDocument::class)->orderBy('id');
     }
 
     public function getTotalAttribute(): int

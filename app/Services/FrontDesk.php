@@ -16,15 +16,19 @@ class FrontDesk
         }
     }
 
-    public function checkIn(array $data): Stay
+    public function checkIn(array $data, array $identityPaths = []): Stay
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data, $identityPaths) {
             $room = Room::lockForUpdate()->findOrFail($data['room_id']);
             self::require($room->status === 'available' && ! $room->activeStay()->exists(), 'အားလပ်သောအခန်းကိုသာ ရွေးနိုင်ပါသည်။');
             $stay = Stay::create([
-                ...collect($data)->only(['guest_name', 'phone', 'notes', 'check_in_at', 'expected_check_out_at', 'room_charge', 'identity_document_path'])->all(),
+                ...collect($data)->only(['guest_name', 'phone', 'notes', 'check_in_at', 'expected_check_out_at', 'room_charge'])->all(),
                 'room_id' => $room->id, 'active_room_id' => $room->id, 'created_by' => auth()->id(),
             ]);
+            foreach ($identityPaths as $path) {
+                $document = $stay->identityDocuments()->create(['path' => $path]);
+                Audit::record('stay.identity_added', $document, null, $document->toArray());
+            }
             $before = $room->toArray();
             $room->update(['status' => 'occupied']);
             Audit::record('stay.check_in', $stay, null, $stay->toArray());

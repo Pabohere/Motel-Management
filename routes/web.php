@@ -27,6 +27,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/stays', [StayController::class, 'store'])->name('stays.store');
     Route::get('/stays/{stay}', [StayController::class, 'show'])->name('stays.show');
     Route::get('/stays/{stay}/identity', [StayController::class, 'identityDocument'])->name('stays.identity');
+    Route::get('/stays/{stay}/identity/{document}', [StayController::class, 'identityDocument'])->name('stays.identity.show');
     Route::put('/stays/{stay}', [StayController::class, 'update'])->name('stays.update');
     Route::post('/stays/{stay}/charges', [StayController::class, 'charge'])->name('stays.charges');
     Route::post('/stays/{stay}/payments', [StayController::class, 'payment'])->middleware('throttle:30,1')->name('stays.payments');

@@ -6,4 +6,14 @@ if [ ! -f vendor/autoload.php ] || [ ! -f .env ]; then
     echo "Run ./bin/setup first." >&2
     exit 1
 fi
-exec ./bin/motel serve --host=127.0.0.1 --port="${MOTEL_PORT:-8000}"
+if [ -x "$MOTEL_ROOT/.tools/php" ]; then
+    MOTEL_PHP="$MOTEL_ROOT/.tools/php"
+elif command -v php >/dev/null 2>&1; then
+    MOTEL_PHP=$(command -v php)
+else
+    echo "PHP 8.4+ is required. Run ./bin/setup after installing PHP and Composer." >&2
+    exit 1
+fi
+# Five 5 MB identity files plus form fields must fit in one request.
+cd "$MOTEL_ROOT/public"
+exec "$MOTEL_PHP" -d upload_max_filesize=6M -d post_max_size=32M -S "127.0.0.1:${MOTEL_PORT:-8000}" ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php
