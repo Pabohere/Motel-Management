@@ -231,3 +231,118 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px soli
   scrollbar-width: thin;
 }
 .summary-card .money-metric small { display: block; margin-top: 5px; line-height: 1.5; }
+
+/* Reference palette: burgundy, deep teal, and warm cream. */
+:root {
+  --burgundy: #6c171e;
+  --teal: #0d3d3a;
+  --cream: #f4dabf;
+  --ink: var(--teal);
+  --green: var(--teal);
+  --orange: var(--burgundy);
+  --blue: var(--teal);
+  --muted: #536661;
+  --line: #0d3d3a26;
+  --warm-white: #fffaf3;
+  --warm-border: #0d3d3a2b;
+}
+body {
+  background-color: #efe2d2;
+  background-image: radial-gradient(ellipse at 8% 16%, #f4dabfbd, transparent 48%),
+    radial-gradient(ellipse at 88% 2%, #0d3d3a1c, transparent 44%),
+    radial-gradient(ellipse at 65% 90%, #6c171e13, transparent 50%);
+}
+body::before { background: linear-gradient(125deg, transparent 15%, #fffaf348 15.2%, transparent 35%, #fffaf340 72%, transparent 72.3%); }
+.sidebar { background: #fffaf3a6; border-color: #fffaf3ee; box-shadow: inset 0 1px 0 #fffaf3, 0 12px 32px #0d3d3a12; }
+.brand, .brand small { color: var(--teal); }
+.brand-icon { color: var(--cream); background: linear-gradient(140deg, #20554f, var(--teal)); border-color: #f4dabf66; box-shadow: inset 0 1px 1px #f4dabf40, 0 5px 12px #0d3d3a20; }
+.nav-label, nav>a, .sidebar-bottom strong, .sidebar-bottom>a, .sidebar-bottom .logout { color: var(--teal); }
+nav>a.active { color: var(--cream); background: linear-gradient(135deg, #20514b, var(--teal)); border-color: var(--teal); box-shadow: inset 0 1px 0 #f4dabf33, 0 5px 13px #0d3d3a20; }
+nav>a.active:hover { background: var(--teal); }
+nav>a:hover { background: #f4dabf55; }
+.sidebar-bottom { border-color: #0d3d3a1a; }
+.avatar { background: #f4dabf8c; border-color: #fffaf3; color: var(--burgundy); }
+.topbar, .topbar .date, .live-pill, .eyebrow, .dashboard-heading p { color: var(--teal); }
+.topbar .date, .live-pill { background: #fffaf3a8; border-color: var(--warm-border); }
+.heading-spark { color: var(--burgundy); }
+.dot, .live-pill .dot { background: var(--teal); }
+.glass-panel { background: #fffaf36e; border-color: #fffaf3f0; box-shadow: inset 0 1px 0 #fffaf3, 0 8px 28px #0d3d3a0d, 0 1px 3px #6c171e08; }
+.glass-inner { background: #fffaf3e6; border-color: #0d3d3a1c; box-shadow: 0 1px 2px #0d3d3a08; }
+.title-icon, .mini-date { color: var(--teal); }
+.count-pill { color: var(--teal); background: #f4dabf75; border-color: #0d3d3a26; }
+.map-filter, .glass-search, .glass-select { background: #fffdf8; border-color: #0d3d3a40; color: var(--teal); }
+.map-filter select, .glass-search input, .glass-select { color: var(--teal); }
+.glass-search input::placeholder { color: #52655d; }
+.glass-search:focus-within { outline-color: var(--burgundy); }
+.room-tile.occupied { background: linear-gradient(140deg, #20554f, var(--teal)); color: var(--cream); border-color: var(--teal); box-shadow: inset 0 1px 0 #f4dabf45, 0 4px 10px #0d3d3a20; }
+.room-tile.available { background: linear-gradient(140deg, #faead7, var(--cream)); color: var(--teal); border-color: #0d3d3a3b; }
+.room-tile.dirty { background: linear-gradient(140deg, #842530, var(--burgundy)); color: var(--cream); border-color: var(--burgundy); }
+.room-tile.maintenance { background: linear-gradient(140deg, #eddbd3, #dac1b9); color: var(--burgundy); border-color: #6c171e47; }
+.room-tile::after { background: linear-gradient(135deg, #fffaf31a, transparent 50%); }
+.room-tile:hover { box-shadow: 0 8px 16px #0d3d3a22; }
+.map-legend { background: #f7eadbcc; border-color: #0d3d3a26; }
+.map-legend>span, .map-legend b, .map-footnote, .map-footnote a { color: var(--teal); }
+.legend-dot { background: var(--cream); border-color: #0d3d3a66; }
+.legend-dot.occupied { background: var(--teal); border-color: var(--teal); }
+.legend-dot.dirty { background: var(--burgundy); border-color: var(--burgundy); }
+.legend-dot.maintenance { background: #dac1b9; border-color: #6c171e66; }
+.summary-card, .summary-card.mint { background: linear-gradient(135deg, #e2ebe4, #f4f3e8); border-color: #0d3d3a33; color: var(--teal); }
+.summary-card.lavender, .summary-card.rose { background: linear-gradient(135deg, #eddad4, #fcf1e6); border-color: #6c171e33; color: var(--burgundy); }
+.summary-card.peach { background: linear-gradient(135deg, var(--cream), #faead8); border-color: #6c171e26; color: var(--teal); }
+.summary-card strong small { color: #53605a; }
+.metric-icon { background: #c2d6c9; color: var(--teal); border-color: #fffaf3aa; }
+.lavender .metric-icon, .rose .metric-icon { background: #dec1b7; color: var(--burgundy); }
+.peach .metric-icon { background: #e8bf99; color: var(--burgundy); }
+.summary-card:hover { box-shadow: 0 8px 20px #0d3d3a14; }
+.btn { background: linear-gradient(140deg, #20554f, var(--teal)); color: var(--cream); border-color: #0d3d3a55; box-shadow: inset 0 1px 1px #f4dabf40, 0 5px 12px #0d3d3a1a; }
+.btn:hover { background: #092f2d; }
+.btn.coral { background: linear-gradient(135deg, #842530, var(--burgundy)); color: var(--cream); border-color: var(--burgundy); box-shadow: inset 0 1px 0 #f4dabf33, 0 4px 14px #6c171e20; }
+.btn.coral:hover { background: #521016; }
+.btn.secondary { background: #fffaf3e6; color: var(--teal); border-color: #0d3d3a4d; }
+.btn.secondary:hover { background: #f4dabf80; }
+.glass-table-wrap { border-color: #0d3d3a2e; }
+th, .guest-table th { color: var(--teal); background: #f1e2cf; border-color: #0d3d3a26; }
+.guest-table td { color: var(--teal); border-color: #0d3d3a1c; }
+.guest-table tbody tr:nth-child(even) { background: #f4dabf26; }
+.guest-table tbody tr:hover { background: #f4dabf61; }
+.guest-name { color: var(--teal); }
+.guest-avatar { color: var(--burgundy); background: #f1d9c2; border-color: #6c171e26; }
+.room-pill { color: var(--burgundy); background: #f4dabf80; border-color: #6c171e2e; }
+.date-cell { color: var(--teal); background: #fffdf8; border-color: #0d3d3a33; }
+.date-cell small, .inline-currency { color: #536661; }
+.balance-due { color: var(--burgundy); }
+.row-open { color: var(--teal); border-color: #0d3d3a40; background: #fffaf3; }
+.row-open:hover { background: var(--cream); }
+.booking-footer, .booking-footer a { color: var(--teal); }
+.cleaning-bar { color: var(--burgundy); border-color: #6c171e33; background: #f4dabf73; }
+.clean-room-button { color: var(--burgundy); border-color: #6c171e40; background: #fffaf3; }
+.clean-room-button:hover { background: var(--cream); }
+.panel, .stat, .room-card { background: #fffaf3e3; border-color: #0d3d3a29; box-shadow: inset 0 1px 1px #fffaf3cc, 0 8px 25px #0d3d3a0a; }
+.room-card, .room-card.available { border-top-color: #cfb292; }
+.room-card.occupied { border-top-color: var(--teal); }
+.room-card.dirty { border-top-color: var(--burgundy); }
+.room-card.maintenance { border-top-color: #ac8780; }
+.badge { background: #ead6cc; color: var(--burgundy); }
+.badge.available { background: #f4dabf9e; color: var(--teal); }
+.badge.occupied { background: #d9e6df; color: var(--teal); }
+.badge.dirty { background: #edd4cc; color: var(--burgundy); }
+.status-dot.occupied { background: var(--teal); }
+.status-dot.dirty { background: var(--burgundy); }
+.status-dot.maintenance { background: #ac8780; }
+.daily-strip { background: #fffaf3a6; border-color: #0d3d3a26; }
+.tabs .selected { background: #fffaf3cc; border-color: #0d3d3a33; color: var(--teal); }
+label, input, select, textarea { color: var(--teal); }
+.filters input, .filters select, input, select, textarea { background-color: #fffdf8; border-color: #0d3d3a40; }
+input:focus, select:focus, textarea:focus { outline-color: var(--burgundy); }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline-color: var(--burgundy); }
+.success { background: #e4eee5; color: var(--teal); border-color: #0d3d3a26; }
+.error { background: #f4dfd5; color: var(--burgundy); border-color: #6c171e26; }
+.map-empty, .empty, footer, .text-link { color: #536661; }
+footer { border-color: #0d3d3a26; }
+.login-page { background-color: #efe2d2; }
+.login-intro { background: linear-gradient(145deg, #20554f, var(--teal)); color: var(--cream); }
+.login-intro .eyebrow, .login-intro p, .login-intro>small { color: var(--cream); }
+.login-art span { border-color: #f4dabf66; background: #f4dabf12; }
+.login-art span:nth-child(2), .login-art span:nth-child(6) { background: var(--burgundy); }
+.login-form { background: #fffaf3b3; border: 1px solid #fffaf3e6; border-radius: 20px; box-shadow: 0 12px 40px #0d3d3a12; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+@supports not (backdrop-filter:blur(1px)) { .sidebar, .glass-panel, .panel { background: #f7ecdc; } .glass-inner { background: var(--warm-white); } }
