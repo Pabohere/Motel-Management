@@ -41,7 +41,7 @@ class StayController extends Controller
     public function store(Request $request, FrontDesk $desk)
     {
         $data = $request->validate([
-            'room_id' => 'required|integer|exists:rooms,id', 'guest_name' => 'required|string|max:150', 'phone' => 'required|string|max:40', 'notes' => 'nullable|string|max:2000',
+            'room_id' => 'required|integer|exists:rooms,id', 'guest_name' => 'required|string|max:150', 'gender' => ['required', Rule::in(array_keys(Stay::GENDERS))], 'phone' => 'required|string|max:40', 'notes' => 'nullable|string|max:2000',
             'check_in_at' => 'required|date|before_or_equal:now', 'expected_check_out_at' => 'required|date|after:check_in_at|after:now',
             'room_charge' => 'required|integer|min:0|max:100000000', 'deposit' => 'required|integer|min:0|lte:room_charge',
             'method' => ['required', Rule::in(['cash', 'transfer', 'card'])],
@@ -70,7 +70,7 @@ class StayController extends Controller
     public function update(Request $request, Stay $stay)
     {
         $data = $request->validate([
-            'guest_name' => 'required|string|max:150', 'phone' => 'required|string|max:40', 'notes' => 'nullable|string|max:2000',
+            'guest_name' => 'required|string|max:150', 'gender' => ['required', Rule::in(array_keys(Stay::GENDERS))], 'phone' => 'required|string|max:40', 'notes' => 'nullable|string|max:2000',
             'expected_check_out_at' => 'required|date|after:'.$stay->check_in_at->toDateTimeString().'|after:now',
             'identity_documents' => 'nullable|array|max:5',
             'identity_documents.*' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',

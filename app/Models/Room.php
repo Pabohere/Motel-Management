@@ -8,13 +8,13 @@ class Room extends Model
 {
     public const STATUSES = ['available' => 'အားလပ်', 'occupied' => 'ဧည့်သည်ရှိ', 'dirty' => 'သန့်ရှင်းရေးလို', 'maintenance' => 'ပြင်ဆင်နေ'];
 
-    protected $attributes = ['status' => 'available'];
+    protected $attributes = ['status' => 'available', 'floor' => 1];
 
-    protected $fillable = ['number', 'type', 'rate', 'status'];
+    protected $fillable = ['number', 'floor', 'type', 'rate', 'status'];
 
     protected function casts(): array
     {
-        return ['rate' => 'integer'];
+        return ['rate' => 'integer', 'floor' => 'integer'];
     }
 
     public function stays()

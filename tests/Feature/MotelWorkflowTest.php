@@ -33,7 +33,7 @@ class MotelWorkflowTest extends TestCase
     private function checkIn(array $extra = []): Stay
     {
         $this->actingAs($this->staff)->post(route('stays.store'), array_replace([
-            'room_id' => $this->room->id, 'guest_name' => 'Test Guest', 'phone' => '09123456789',
+            'room_id' => $this->room->id, 'guest_name' => 'Test Guest', 'gender' => 'male', 'phone' => '09123456789',
             'check_in_at' => now()->subMinute()->format('Y-m-d H:i:s'), 'expected_check_out_at' => now()->addDay()->format('Y-m-d H:i:s'),
             'room_charge' => 35000, 'deposit' => 10000, 'method' => 'cash',
         ], $extra))->assertSessionHasNoErrors()->assertRedirect();
@@ -72,6 +72,7 @@ class MotelWorkflowTest extends TestCase
     public function test_complete_front_desk_and_money_workflow(): void
     {
         $stay = $this->checkIn();
+        $this->assertSame('male', $stay->gender);
         $this->assertSame('occupied', $this->room->fresh()->status);
         $this->assertSame(25000, $stay->balance);
         $this->post(route('stays.charges', $stay), ['description' => 'Extra bed', 'amount' => 5000])->assertSessionHasNoErrors();
@@ -96,11 +97,24 @@ class MotelWorkflowTest extends TestCase
         $this->assertSame(1, $stay->payments()->count());
     }
 
+    public function test_check_in_requires_a_valid_gender(): void
+    {
+        $this->actingAs($this->staff);
+        $data = [
+            'room_id' => $this->room->id, 'guest_name' => 'Test Guest', 'phone' => '09123456789',
+            'check_in_at' => now()->subMinute()->toDateTimeString(), 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
+            'room_charge' => 35000, 'deposit' => 0, 'method' => 'cash',
+        ];
+        $this->post(route('stays.store'), $data)->assertSessionHasErrors('gender');
+        $this->post(route('stays.store'), [...$data, 'gender' => 'other'])->assertSessionHasErrors('gender');
+        $this->assertSame(0, Stay::count());
+    }
+
     public function test_unavailable_room_and_double_checkin_are_rejected(): void
     {
         $this->checkIn();
         $count = Stay::count();
-        $this->post(route('stays.store'), ['room_id' => $this->room->id, 'guest_name' => 'Second', 'phone' => '09',
+        $this->post(route('stays.store'), ['room_id' => $this->room->id, 'guest_name' => 'Second', 'gender' => 'female', 'phone' => '09',
             'check_in_at' => now()->subMinute()->toDateTimeString(), 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
             'room_charge' => 35000, 'deposit' => 0, 'method' => 'cash'])->assertSessionHasErrors('operation');
         $this->assertSame($count, Stay::count());
@@ -140,15 +154,17 @@ class MotelWorkflowTest extends TestCase
     {
         $this->staff->update(['role' => 'manager']);
         $this->actingAs($this->staff);
-        $this->post('/rooms', ['number' => '102', 'type' => 'Deluxe', 'rate' => 50000])->assertSessionHasNoErrors();
+        $this->post('/rooms', ['number' => '102', 'type' => 'Deluxe', 'rate' => 50000, 'floor' => 2])->assertSessionHasNoErrors();
         $this->patch(route('rooms.status', $this->room), ['status' => 'maintenance'])->assertSessionHasNoErrors();
-        $this->put(route('rooms.update', $this->room), ['number' => '101', 'type' => 'Updated', 'rate' => 45000])->assertSessionHasNoErrors();
+        $this->put(route('rooms.update', $this->room), ['number' => '101', 'type' => 'Updated', 'rate' => 45000, 'floor' => 3])->assertSessionHasNoErrors();
         $this->post('/users', ['name' => 'Reception', 'email' => 'staff@example.test', 'password' => 'a-long-test-password', 'password_confirmation' => 'a-long-test-password', 'role' => 'staff'])->assertSessionHasNoErrors();
         $user = User::where('email', 'staff@example.test')->firstOrFail();
         $this->put(route('users.update', $user), ['name' => 'Reception', 'role' => 'staff', 'active' => 0])->assertSessionHasNoErrors();
         $this->assertFalse($user->fresh()->active);
         $this->put(route('users.update', $this->staff), ['name' => 'Me', 'role' => 'staff', 'active' => 0])->assertSessionHasErrors('operation');
         $this->assertDatabaseHas('audit_logs', ['action' => 'room.updated']);
+        $this->assertSame(3, $this->room->fresh()->floor);
+        $this->get(route('dashboard'))->assertOk()->assertSee('3 ထပ်');
         $this->assertStringNotContainsString('a-long-test-password', AuditLog::all()->toJson());
     }
 
@@ -165,9 +181,10 @@ class MotelWorkflowTest extends TestCase
     public function test_guest_edits_and_completed_stay_guards(): void
     {
         $stay = $this->checkIn(['deposit' => 35000]);
-        $data = ['guest_name' => 'Updated Guest', 'phone' => '09888', 'expected_check_out_at' => now()->addDays(2)->toDateTimeString(), 'notes' => 'Late departure'];
+        $data = ['guest_name' => 'Updated Guest', 'gender' => 'female', 'phone' => '09888', 'expected_check_out_at' => now()->addDays(2)->toDateTimeString(), 'notes' => 'Late departure'];
         $this->put(route('stays.update', $stay), $data)->assertSessionHasNoErrors();
         $this->assertSame('Updated Guest', $stay->fresh()->guest_name);
+        $this->assertSame('female', $stay->fresh()->gender);
         $this->post(route('stays.checkout', $stay))->assertSessionHasNoErrors();
         $this->post(route('stays.checkout', $stay))->assertSessionHasErrors('operation');
         $this->put(route('stays.update', $stay), $data)->assertSessionHasErrors('operation');
@@ -254,7 +271,7 @@ class MotelWorkflowTest extends TestCase
         $pdf = $stay->identityDocuments()->orderBy('id')->skip(2)->firstOrFail();
         $this->get(route('stays.identity.show', [$stay, $pdf]))->assertOk()->assertHeader('Content-Type', 'application/pdf');
 
-        $update = ['guest_name' => 'Test Guest', 'phone' => '09123456789', 'expected_check_out_at' => now()->addDay()->toDateTimeString()];
+        $update = ['guest_name' => 'Test Guest', 'gender' => 'male', 'phone' => '09123456789', 'expected_check_out_at' => now()->addDay()->toDateTimeString()];
         $this->put(route('stays.update', $stay), [...$update, 'identity_documents' => [
             UploadedFile::fake()->create('extra-1.webp', 20, 'image/webp'),
             UploadedFile::fake()->create('extra-2.jpg', 20, 'image/jpeg'),
@@ -267,7 +284,7 @@ class MotelWorkflowTest extends TestCase
         Storage::disk('local')->assertExists($first->path);
 
         $this->post(route('stays.store'), [
-            'room_id' => $this->room->id, 'guest_name' => 'Bad file', 'phone' => '09',
+            'room_id' => $this->room->id, 'guest_name' => 'Bad file', 'gender' => 'male', 'phone' => '09',
             'check_in_at' => now()->subMinute()->toDateTimeString(), 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
             'room_charge' => 35000, 'deposit' => 0, 'method' => 'cash',
             'identity_documents' => [UploadedFile::fake()->create('script.txt', 1, 'text/plain')],
@@ -295,7 +312,7 @@ class MotelWorkflowTest extends TestCase
     {
         Storage::fake('local');
         $data = [
-            'room_id' => $this->room->id, 'guest_name' => 'Guest', 'phone' => '09',
+            'room_id' => $this->room->id, 'guest_name' => 'Guest', 'gender' => 'male', 'phone' => '09',
             'check_in_at' => now()->subMinute()->toDateTimeString(), 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
             'room_charge' => 35000, 'deposit' => 0, 'method' => 'cash',
         ];

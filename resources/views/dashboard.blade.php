@@ -11,16 +11,29 @@
             <div class="panel-toolbar"><div class="panel-title"><span class="title-icon">@include('icon', ['name'=>'grid'])</span><h2 id="room-map-heading">အခန်းအခြေအနေ</h2><span class="count-pill">{{ $rooms->count() }}</span></div>
                 <div class="map-filter">@include('icon', ['name'=>'filter'])<select id="room-map-filter" aria-label="အခန်းအခြေအနေ စစ်ရန်"><option value="all">အားလုံး</option>@foreach(\App\Models\Room::STATUSES as $status=>$label)<option value="{{ $status }}">{{ $label }}</option>@endforeach</select></div>
             </div>
+            <div class="floor-switch" role="group" aria-label="အထပ်ရွေးရန်">
+                <button type="button" class="floor-choice active" data-floor-filter="all" aria-pressed="true">အထပ်အားလုံး</button>
+                @foreach($floors as $floor=>$floorRooms)
+                <button type="button" class="floor-choice" data-floor-filter="{{ $floor }}" aria-pressed="false">{{ $floor }} ထပ် <span>{{ $floorRooms->count() }}</span></button>
+                @endforeach
+            </div>
             <div class="room-map" id="room-map">
-                @forelse($rooms as $room)
-                    <a class="room-tile {{ $room->status }}" data-room-status="{{ $room->status }}"
-                       href="{{ $room->activeStay ? route('stays.show', $room->activeStay) : ($room->status === 'available' ? route('stays.create', ['room'=>$room->id]) : route('rooms.index', ['status'=>$room->status])) }}"
-                       title="{{ $room->number }} · {{ \App\Models\Room::STATUSES[$room->status] }}{{ $room->activeStay ? ' · '.$room->activeStay->guest_name : '' }}"
-                       aria-label="အခန်း {{ $room->number }}၊ {{ \App\Models\Room::STATUSES[$room->status] }}">
-                        <span class="tile-indicator"></span><strong>{{ $room->number }}</strong><small>{{ $room->type }}</small>
-                    </a>
+                @forelse($floors as $floor=>$floorRooms)
+                <section class="floor-group" data-floor-group="{{ $floor }}" aria-label="{{ $floor }} ထပ်ရှိ အခန်းများ">
+                    <div class="floor-heading"><h3>{{ $floor }} ထပ်</h3><span>{{ $floorRooms->count() }} ခန်း</span></div>
+                    <div class="floor-room-grid">
+                    @foreach($floorRooms as $room)
+                        <a class="room-tile {{ $room->status }}" data-room-status="{{ $room->status }}"
+                           href="{{ $room->activeStay ? route('stays.show', $room->activeStay) : ($room->status === 'available' ? route('stays.create', ['room'=>$room->id]) : route('rooms.index', ['status'=>$room->status])) }}"
+                           title="{{ $floor }} ထပ် · {{ $room->number }} · {{ \App\Models\Room::STATUSES[$room->status] }}{{ $room->activeStay ? ' · '.$room->activeStay->guest_name : '' }}"
+                           aria-label="{{ $floor }} ထပ်၊ အခန်း {{ $room->number }}၊ {{ \App\Models\Room::STATUSES[$room->status] }}">
+                            <span class="tile-indicator"></span><strong>{{ $room->number }}</strong><small>{{ $room->type }}</small>
+                        </a>
+                    @endforeach
+                    </div>
+                </section>
                 @empty<div class="map-empty">အခန်းမရှိသေးပါ။ <a href="{{ route('rooms.index') }}">အခန်းထည့်ရန် ↗</a></div>@endforelse
-                <p class="map-empty" id="room-map-empty" hidden>ဤအခြေအနေရှိသောအခန်း မရှိပါ။</p>
+                <p class="map-empty" id="room-map-empty" hidden>ရွေးထားသော အထပ်နှင့်အခြေအနေအတွက် အခန်းမရှိပါ။</p>
             </div>
             <div class="map-legend">@foreach(\App\Models\Room::STATUSES as $status=>$label)<span><i class="legend-dot {{ $status }}"></i>{{ $label }} <b>{{ $counts[$status] ?? 0 }}</b></span>@endforeach</div>
             <div class="map-footnote"><span>အခန်းကိုနှိပ်ပြီး ဧည့်သည်ကြည့် / Check-in လုပ်နိုင်ပါတယ်။</span><a href="{{ route('rooms.index') }}">အခန်းများ @include('icon', ['name'=>'arrow'])</a></div>
@@ -47,10 +60,11 @@
             <select id="guest-sort" class="glass-select" aria-label="ဧည့်သည်စာရင်း စီရန်"><option value="checkout">ထွက်ရန်အချိန်အလိုက်</option><option value="room">အခန်းအလိုက်</option><option value="name">အမည်အလိုက်</option></select>
             <a class="btn coral" href="{{ route('stays.create') }}">@include('icon', ['name'=>'plus']) ဧည့်သည် Check-in</a>
         </div>
-        <div class="glass-table-wrap"><table class="guest-table"><thead><tr><th>ဧည့်သည်အမည်</th><th>အခန်း</th><th>ဝင်ချိန်</th><th>ထွက်ရန်အချိန်</th><th>ဖုန်းနံပါတ်</th><th>ကျန်ငွေ</th><th></th></tr></thead><tbody id="guest-table-body">
+        <div class="glass-table-wrap"><table class="guest-table"><thead><tr><th>ဧည့်သည်အမည်</th><th>ကျား / မ</th><th>အခန်း</th><th>ဝင်ချိန်</th><th>ထွက်ရန်အချိန်</th><th>ဖုန်းနံပါတ်</th><th>ကျန်ငွေ</th><th></th></tr></thead><tbody id="guest-table-body">
             @foreach($activeStays as $stay)
             <tr data-guest-row data-name="{{ $stay->guest_name }}" data-room="{{ $stay->room->number }}" data-phone="{{ $stay->phone }}" data-checkout="{{ $stay->expected_check_out_at->timestamp }}">
                 <td><a class="guest-name" href="{{ route('stays.show', $stay) }}"><span class="guest-avatar">{{ mb_substr($stay->guest_name,0,1) }}</span><strong>{{ $stay->guest_name }}</strong></a></td>
+                <td>{{ \App\Models\Stay::GENDERS[$stay->gender] ?? '—' }}</td>
                 <td><span class="room-pill">{{ $stay->room->number }}</span></td>
                 <td><span class="date-cell">{{ $stay->check_in_at->format('d M Y') }}<small>{{ $stay->check_in_at->format('H:i') }}</small></span></td>
                 <td><span class="date-cell">{{ $stay->expected_check_out_at->format('d M Y') }}<small>{{ $stay->expected_check_out_at->format('H:i') }}</small></span>@if($stay->expected_check_out_at->isPast())<span class="badge dirty">အချိန်ကျော်</span>@endif</td>
@@ -58,7 +72,7 @@
                 <td><a class="row-open" href="{{ route('stays.show',$stay) }}" aria-label="{{ $stay->guest_name }} အသေးစိတ်ကြည့်ရန်">@include('icon', ['name'=>'arrow'])</a></td>
             </tr>
             @endforeach
-            <tr id="guest-empty-row" @if($activeStays->isNotEmpty()) hidden @endif><td colspan="7" class="empty">{{ $activeStays->isEmpty() ? 'လက်ရှိ တည်းခိုသူ မရှိသေးပါ။' : 'ရှာဖွေမှုနှင့်ကိုက်ညီသော ဧည့်သည် မရှိပါ။' }}</td></tr>
+            <tr id="guest-empty-row" @if($activeStays->isNotEmpty()) hidden @endif><td colspan="8" class="empty">{{ $activeStays->isEmpty() ? 'လက်ရှိ တည်းခိုသူ မရှိသေးပါ။' : 'ရှာဖွေမှုနှင့်ကိုက်ညီသော ဧည့်သည် မရှိပါ။' }}</td></tr>
         </tbody></table></div>
         <div class="booking-footer"><span>{{ $activeStays->count() }} ဦး · လက်ရှိ တည်းခိုမှုမှတ်တမ်း</span><a href="{{ route('stays.index') }}">ဧည့်သည်စာရင်း အားလုံး @include('icon', ['name'=>'arrow'])</a></div>
     </div>

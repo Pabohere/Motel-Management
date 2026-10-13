@@ -14,14 +14,14 @@ class RoomController extends Controller
     public function index(Request $request)
     {
         $data = $request->validate(['status' => ['nullable', Rule::in(array_keys(Room::STATUSES))]]);
-        $rooms = Room::with('activeStay')->when($data['status'] ?? null, fn ($q, $s) => $q->where('status', $s))->orderBy('number')->get();
+        $rooms = Room::with('activeStay')->when($data['status'] ?? null, fn ($q, $s) => $q->where('status', $s))->orderBy('floor')->orderBy('number')->get();
 
         return view('rooms.index', compact('rooms'));
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate(['number' => 'required|string|max:20|unique:rooms', 'type' => 'required|string|max:80', 'rate' => 'required|integer|min:0|max:100000000']);
+        $data = $request->validate(['number' => 'required|string|max:20|unique:rooms', 'floor' => 'required|integer|min:1|max:99', 'type' => 'required|string|max:80', 'rate' => 'required|integer|min:0|max:100000000']);
         DB::transaction(function () use ($data) {
             $room = Room::create($data);
             Audit::record('room.created', $room, null, $room->toArray());
@@ -37,7 +37,7 @@ class RoomController extends Controller
 
     public function update(Request $request, Room $room)
     {
-        $data = $request->validate(['number' => ['required', 'string', 'max:20', Rule::unique('rooms')->ignore($room->id)], 'type' => 'required|string|max:80', 'rate' => 'required|integer|min:0|max:100000000']);
+        $data = $request->validate(['number' => ['required', 'string', 'max:20', Rule::unique('rooms')->ignore($room->id)], 'floor' => 'required|integer|min:1|max:99', 'type' => 'required|string|max:80', 'rate' => 'required|integer|min:0|max:100000000']);
         DB::transaction(function () use ($room, $data) {
             $locked = Room::lockForUpdate()->findOrFail($room->id);
             $before = $locked->toArray();

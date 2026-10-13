@@ -23,14 +23,30 @@ document.getElementById('calculate-rate')?.addEventListener('click', calculateRa
 
 // Dashboard filters only affect the visible view; records stay on the server.
 const roomMapFilter = document.getElementById('room-map-filter');
-roomMapFilter?.addEventListener('change', () => {
+const floorChoices = Array.from(document.querySelectorAll('[data-floor-filter]'));
+function filterRoomMap() {
   let visibleRooms = 0;
-  document.querySelectorAll('[data-room-status]').forEach(tile => {
-    tile.hidden = roomMapFilter.value !== 'all' && tile.dataset.roomStatus !== roomMapFilter.value;
-    if (!tile.hidden) visibleRooms += 1;
+  const selectedFloor = floorChoices.find(choice => choice.getAttribute('aria-pressed') === 'true')?.dataset.floorFilter ?? 'all';
+  document.querySelectorAll('[data-floor-group]').forEach(group => {
+    let visibleOnFloor = 0;
+    group.querySelectorAll('[data-room-status]').forEach(tile => {
+      tile.hidden = roomMapFilter.value !== 'all' && tile.dataset.roomStatus !== roomMapFilter.value;
+      if (!tile.hidden) visibleOnFloor += 1;
+    });
+    group.hidden = (selectedFloor !== 'all' && group.dataset.floorGroup !== selectedFloor) || visibleOnFloor === 0;
+    if (!group.hidden) visibleRooms += visibleOnFloor;
   });
   document.getElementById('room-map-empty').hidden = visibleRooms > 0;
-});
+}
+roomMapFilter?.addEventListener('change', filterRoomMap);
+floorChoices.forEach(choice => choice.addEventListener('click', () => {
+  floorChoices.forEach(item => {
+    const active = item === choice;
+    item.classList.toggle('active', active);
+    item.setAttribute('aria-pressed', String(active));
+  });
+  filterRoomMap();
+}));
 const guestSearch = document.getElementById('guest-search');
 const guestRows = Array.from(document.querySelectorAll('[data-guest-row]'));
 guestSearch?.addEventListener('input', () => {

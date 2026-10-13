@@ -22,7 +22,7 @@ class FrontDesk
             $room = Room::lockForUpdate()->findOrFail($data['room_id']);
             self::require($room->status === 'available' && ! $room->activeStay()->exists(), 'အားလပ်သောအခန်းကိုသာ ရွေးနိုင်ပါသည်။');
             $stay = Stay::create([
-                ...collect($data)->only(['guest_name', 'phone', 'notes', 'check_in_at', 'expected_check_out_at', 'room_charge'])->all(),
+                ...collect($data)->only(['guest_name', 'gender', 'phone', 'notes', 'check_in_at', 'expected_check_out_at', 'room_charge'])->all(),
                 'room_id' => $room->id, 'active_room_id' => $room->id, 'created_by' => auth()->id(),
             ]);
             foreach ($identityPaths as $path) {

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Stay extends Model
 {
+    public const GENDERS = ['male' => 'ကျား', 'female' => 'မ'];
+
     protected $guarded = ['id'];
 
     protected function casts(): array
