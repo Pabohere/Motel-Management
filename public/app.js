@@ -20,3 +20,37 @@ function calculateRate() {
 }
 room?.addEventListener('change', calculateRate);
 document.getElementById('calculate-rate')?.addEventListener('click', calculateRate);
+
+// Dashboard filters only affect the visible view; records stay on the server.
+const roomMapFilter = document.getElementById('room-map-filter');
+roomMapFilter?.addEventListener('change', () => {
+  let visibleRooms = 0;
+  document.querySelectorAll('[data-room-status]').forEach(tile => {
+    tile.hidden = roomMapFilter.value !== 'all' && tile.dataset.roomStatus !== roomMapFilter.value;
+    if (!tile.hidden) visibleRooms += 1;
+  });
+  document.getElementById('room-map-empty').hidden = visibleRooms > 0;
+});
+const guestSearch = document.getElementById('guest-search');
+const guestRows = Array.from(document.querySelectorAll('[data-guest-row]'));
+guestSearch?.addEventListener('input', () => {
+  const query = guestSearch.value.trim().toLocaleLowerCase();
+  let visibleGuests = 0;
+  guestRows.forEach(row => {
+    const searchable = [row.dataset.name, row.dataset.room, row.dataset.phone].join(' ').toLocaleLowerCase();
+    row.hidden = !searchable.includes(query);
+    if (!row.hidden) visibleGuests += 1;
+  });
+  document.getElementById('guest-result-count').textContent = visibleGuests;
+  document.getElementById('guest-empty-row').hidden = visibleGuests > 0;
+});
+document.getElementById('guest-sort')?.addEventListener('change', event => {
+  const sort = event.target.value;
+  const collator = new Intl.Collator('my', {numeric:true, sensitivity:'base'});
+  guestRows.sort((a,b) => sort === 'checkout'
+    ? Number(a.dataset.checkout) - Number(b.dataset.checkout)
+    : collator.compare(a.dataset[sort], b.dataset[sort]));
+  const body = document.getElementById('guest-table-body');
+  const emptyRow = document.getElementById('guest-empty-row');
+  guestRows.forEach(row => body.insertBefore(row, emptyRow));
+});
