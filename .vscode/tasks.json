@@ -2,9 +2,18 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Motel: Setup local",
+      "type": "shell",
+      "command": "./bin/setup --sample-rooms",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Motel: Serve",
       "type": "shell",
-      "command": "./bin/motel serve --host=127.0.0.1 --port=8000",
+      "command": "./bin/start",
       "isBackground": true,
       "options": {
         "cwd": "${workspaceFolder}"

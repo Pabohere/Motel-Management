@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+MOTEL_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$MOTEL_ROOT"
+if [ ! -f vendor/autoload.php ] || [ ! -f .env ]; then
+    echo "Run ./bin/setup first." >&2
+    exit 1
+fi
+exec ./bin/motel serve --host=127.0.0.1 --port="${MOTEL_PORT:-8000}"

@@ -8,7 +8,7 @@ if [ -x "$MOTEL_ROOT/.tools/php" ]; then
 elif command -v php >/dev/null 2>&1; then
     MOTEL_PHP=$(command -v php)
 else
-    echo "PHP 8.3+ is required. Install PHP and Composer, then see README.md." >&2
+    echo "PHP 8.4+ is required for the committed dependencies. Install PHP and Composer, then see README.md." >&2
     exit 1
 fi
 exec "$MOTEL_PHP" artisan "$@"

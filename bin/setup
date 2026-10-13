@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+MOTEL_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$MOTEL_ROOT"
+case "${1:-}" in
+    ""|--sample-rooms) ;;
+    *) echo "Usage: ./bin/setup [--sample-rooms]" >&2; exit 1 ;;
+esac
+if [ ! -f .env ]; then
+    cp .env.example .env
+    chmod 600 .env
+fi
+./bin/composer install --no-interaction --prefer-dist
+# Preserve existing encryption keys, passwords, and local database records.
+if ! awk '/^APP_KEY[[:space:]]*=/ { value = substr($0, index($0, "=") + 1); gsub(/[[:space:]\"\047]/, "", value); if (length(value) > 0) found = 1 } END { exit !found }' .env; then
+    ./bin/motel key:generate --no-interaction
+fi
+if [ ! -f database/database.sqlite ]; then
+    touch database/database.sqlite
+fi
+./bin/motel migrate --no-interaction
+if [ "${1:-}" = "--sample-rooms" ]; then
+    ./bin/motel db:seed --no-interaction
+fi
+printf '\nLocal setup complete.\nCreate an account: ./bin/motel motel:create-manager\nStart the app:    ./bin/start\n'

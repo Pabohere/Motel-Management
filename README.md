@@ -1,21 +1,28 @@
 # Motel Management
 
-မိုတယ်ဝန်ထမ်းသုံး internal software — Laravel 13 / PHP 8.3+ / Blade / SQLite။ မြန်မာစာ UI၊ MMK ငွေကြေး၊ Asia/Yangon အချိန်။ CSS နှင့် JavaScript ကို local မှ ဖတ်သည်။ Node/npm build မလိုပါ။
+မိုတယ်ဝန်ထမ်းသုံး internal software — Laravel 13 / PHP 8.4+ / Blade / SQLite။ မြန်မာစာ UI၊ MMK ငွေကြေး၊ Asia/Yangon အချိန်။ CSS နှင့် JavaScript ကို local မှ ဖတ်သည်။ Node/npm build မလိုပါ။
 
-## ယခုစက်တွင် စတင်အသုံးပြုရန်
+## Git မှ clone လုပ်ပြီး local တွင် run ရန်
 
-Dependencies, application key, SQLite database နှင့် နမူနာအခန်း 101–112 ကို ပြင်ဆင်ထားပြီးဖြစ်သည်။ `.tools/` ထဲတွင် ဤ Mac အတွက် PHP နှင့် Composer ရှိသည်။ Git တွင် runtime၊ ဒေတာ၊ credentials နှင့် `.env` မပါဝင်ပါ။
-
-VS Code Terminal မှ project folder တွင်:
+PHP 8.4+ နှင့် Composer လိုအပ်သည်။ SQLite/PDO, mbstring, intl, DOM/XML နှင့် curl extensions ရှိရမည်။ ယခု Mac တွင် `.tools/` မှ PHP/Composer ကို အသုံးပြုနိုင်သည်။ အခြားစက်တွင် ကိုယ်ပိုင် PHP/Composer ကို install လုပ်ထားပါ။ `.tools/` သည် Git ထဲ မပါဝင်ပါ။
 
 ```sh
+git clone --branch demo https://github.com/Pabohere/Motel-Management.git
+cd Motel-Management
+./bin/setup --sample-rooms
 ./bin/motel motel:create-manager
-./bin/motel serve --host=127.0.0.1 --port=8000
+./bin/start
 ```
 
-ပထမ command တွင် မန်နေဂျာအမည်၊ အီးမေးလ်၊ စကားဝှက် (အနည်းဆုံး ၁၂ လုံး) သတ်မှတ်ပါ။ Default login မရှိပါ။ Browser မှ http://127.0.0.1:8000 ကို ဖွင့်ပြီး သတ်မှတ်ခဲ့သော account ဖြင့် ဝင်ပါ။ မန်နေဂျာမှ ဝန်ထမ်းအကောင့်များ ထပ်ဖန်တီးနိုင်သည်။
+ပထမဆုံး မန်နေဂျာအမည်၊ အီးမေးလ်၊ စကားဝှက် (အနည်းဆုံး ၁၂ လုံး) သတ်မှတ်ပါ။ Default login မရှိပါ။ Browser မှ **http://127.0.0.1:8000** ကို ဖွင့်ပြီး သတ်မှတ်ခဲ့သော account ဖြင့် ဝင်ပါ။ မန်နေဂျာမှ ဝန်ထမ်းအကောင့်များ ထပ်ဖန်တီးနိုင်သည်။ Server ပိတ်ရန် Terminal တွင် `Ctrl+C` နှိပ်ပါ။ နောက်တစ်ကြိမ် ပြန်သုံးလျှင် `./bin/start` တစ်ခုတည်း run ပါ။
 
-VS Code → Terminal → Run Task တွင် **Motel: Create manager**, **Motel: Serve**, **Motel: Test** တို့လည်း အသုံးပြုနိုင်သည်။
+`./bin/setup` သည် dependencies, `.env`, encryption key နှင့် database tables ကို ပြင်ဆင်ပေးသည်။ ထပ် run လျှင် ရှိပြီးသား APP_KEY နှင့် ဒေတာကို ထိန်းထားသည်။ `--sample-rooms` ထည့်လျှင် နမူနာအခန်း 101–112 ထည့်ပေးသည်။ လက်ရှိအခန်းများ၏ နှုန်းနှင့် အခြေအနေကို မပြောင်းပါ။
+
+ယခုစက်ပေါ် project ရှိပြီးသားဆို `git clone` မလိုပါ။ VS Code Terminal မှ project folder တွင် အထက်ပါ setup/account/start command များကို run ပါ။ VS Code → Terminal → Run Task တွင် **Motel: Setup local**, **Motel: Create manager**, **Motel: Serve**, **Motel: Test** ကိုလည်း သုံးနိုင်သည်။
+
+ဒေတာနှင့် ဝန်ထမ်းအကောင့်များသည် `database/database.sqlite` ထဲတွင် သိမ်းထားပြီး စက်ပြန်ဖွင့်လည်း ကျန်ရှိသည်။ `.env`, database, စကားဝှက်နှင့် runtime ဖိုင်များ Git ထဲ မပါဝင်ပါ။ Backup လုပ်လျှင် server ပိတ်ပြီး database ဖိုင်နှင့် `.env` ကို သီးခြားသိမ်းပါ။
+
+Port 8000 ကို အခြား app သုံးနေပါက `MOTEL_PORT=8002 ./bin/start` ဖြင့် စတင်နိုင်သည်။ Local စက်ပေါ်တွင်သာ ဖွင့်ထားသည်။
 
 ## လုပ်ဆောင်ချက်များ
 
@@ -31,25 +38,6 @@ VS Code → Terminal → Run Task တွင် **Motel: Create manager**, **Mote
 
 အခန်းခကို **တည်းခိုမှုတစ်ခုလုံးအတွက်** check-in အချိန် သတ်မှတ်သည်။ UI တွင် တစ်ညနှုန်း × calendar nights (အနည်းဆုံး တစ်ည) အကြံပြုတွက်ချက်ပေးသည်။ အချိန်တိုးလျှင် room charge အလိုအလျောက် မပြောင်းပါ။ အပိုငွေတွင် အကြောင်းအရာနှင့် ထည့်ပါ။ ထွက်ပြီးသော မှတ်တမ်းနှင့် လက်ခံပြီးငွေများကို UI မှ ဖျက်ခြင်းမပြုနိုင်ပါ။
 
-## အခြားစက်ပေါ်တွင် install လုပ်ရန်
-
-PHP 8.3+ (SQLite/PDO, mbstring, intl, DOM/XML, curl extensions) နှင့် Composer လိုသည်။
-
-```sh
-composer install
-cp .env.example .env
-php artisan key:generate
-# database/database.sqlite ဖိုင်အလွတ် ဖန်တီးပါ
-# macOS / Linux:
-touch database/database.sqlite
-php artisan migrate
-php artisan db:seed  # optional: sample rooms 101–112
-php artisan motel:create-manager
-php artisan serve
-```
-
-SQLite ကို အလွယ်တကူ စတင်အသုံးပြုနိုင်သည်။ MySQL အသုံးပြုလိုပါက `.env` တွင် DB_CONNECTION နှင့် DB_HOST/PORT/DATABASE/USERNAME/PASSWORD သတ်မှတ်ပြီး `php artisan migrate` လုပ်ပါ။ ဤစက်တွင် SQLite ဖြင့် စမ်းသပ်ထားသည်။
-
 ## စမ်းသပ်ရန်
 
 ```sh
@@ -58,7 +46,3 @@ SQLite ကို အလွယ်တကူ စတင်အသုံးပြု�
 ```
 
 Tests သည် သီးခြား in-memory SQLite ကို အသုံးပြုသည်။ လက်ရှိမိုတယ်ဒေတာကို မပြောင်းပါ။ Authentication, roles, disabled accounts, check-in/out, occupied-room uniqueness, billing, overpayment, cleaning, audit, daily date boundaries နှင့် views တို့ကို စမ်းသပ်ထားသည်။
-
-## Internal server အတွက်
-
-Development server ကို localhost တွင်သာ ဖွင့်ထားသည်။ ဝန်ထမ်းများအတူသုံးရန် dedicated internal server မှ `public/` ကို web root အဖြစ် သတ်မှတ်ပါ။ `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, HTTPS နှင့် `SESSION_SECURE_COOKIE=true` သတ်မှတ်ပြီး database backup ပုံမှန်လုပ်ပါ။ Production တွင် real credentials နှင့် သီးခြား APP_KEY အသုံးပြုပါ။ Server စနစ်ပေါ်မူတည်၍ PHP-FPM/Nginx သို့မဟုတ် Apache တပ်ဆင်ရန် လိုသည်။
