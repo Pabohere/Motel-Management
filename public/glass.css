@@ -8,7 +8,7 @@
 }
 /* Reference glass — white, mint, coral, and pastel accents. */
 :root { --mint: #10b779; --coral: #e66e61; --accent: #e5754b; --mint-tint: #e8f5ed; --teal: #25765b; --ink: #292933; --muted: #6b6f79; --green: var(--teal); --blue: #318168; --orange: #ad5638; --line: #6e71841f; --soft: #edf5ef; --surface: #ffffff; --border: #7275872b; }
-body { background: #e7e6ec; background-image: radial-gradient(ellipse at 9% 20%, #f3e5ddb3, transparent 45%), radial-gradient(ellipse at 88% 0%, #dce5efad, transparent 44%), radial-gradient(ellipse at 65% 90%, #e4d8efb3, transparent 50%); background-attachment: fixed; -webkit-font-smoothing: antialiased; }
+body { background-color: #cbdedb; background-image: radial-gradient(ellipse 55% 52% at 8% 8%, #d7ffcf 0%, transparent 78%), radial-gradient(ellipse 48% 65% at 92% 11%, #a8d9d7 0%, transparent 78%), radial-gradient(ellipse 54% 56% at 51% 62%, #e8d9f5 0%, transparent 80%), radial-gradient(ellipse 46% 48% at 3% 93%, #f7ddcf 0%, transparent 80%), linear-gradient(135deg, #e4f2e5, #cddadd 55%, #d9e3dd); background-attachment: fixed; -webkit-font-smoothing: antialiased; }
 body::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background: linear-gradient(125deg, transparent 48%, #ffffff35 48.2%, transparent 67%);
@@ -16,7 +16,7 @@ body::before {
 .icon { width: 19px; height: 19px; flex-shrink: 0; vertical-align: middle; stroke-width: 2; }
 h1 { font-size: 36px; font-weight: 800; letter-spacing: -.7px; }
 h2 { font-size: 20px; font-weight: 750; }
-.sidebar { inset: 18px auto 18px 18px; width: 250px; padding: 28px 16px; border-radius: 20px; color: var(--ink); background: #ffffff9e; border: 1px solid #ffffffeb; backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); box-shadow: inset 0 1px 0 white, 0 18px 40px #3d344e0d; }
+.sidebar { inset: 18px auto 18px 18px; width: 250px; padding: 28px 16px; border-radius: 20px; color: var(--ink); background: linear-gradient(150deg, #ffffffa3, #ffffff4d 48%, #ffffff75); border: 1px solid #ffffffd9; backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); box-shadow: inset 1px 1px 0 #ffffffec, inset -1px -1px 0 #ffffff52, 0 18px 40px #3d344e1a; }
 .brand { gap: 11px; color: #313934; font-size: 21px; font-weight: 800; letter-spacing: 3px; }
 .brand small { font-size: 12px; color: #6b7673; }
 .brand-icon { color: white; background: linear-gradient(140deg, #538a71, #245c46); border: 1px solid #ffffff80; border-radius: 11px; box-shadow: inset 0 1px 0 #ffffff55, 0 4px 14px #25765b20; }
@@ -361,21 +361,23 @@ label>small { display: block; margin-top: 6px; line-height: 1.6; }
 .badge.dirty { background: #fff3c8; color: #705515; }
 .badge.available { background: #e3f5e9; color: #176b4e; }
 
-.glass-panel { background: #ffffff56; border-color: #fffffff0; backdrop-filter: blur(28px) saturate(155%); -webkit-backdrop-filter: blur(28px) saturate(155%); box-shadow: inset 0 1px 0 #fff, 0 18px 42px #3b4c5f14; }
-.glass-inner { background: #ffffff96; border-color: #ffffffc7; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: inset 0 1px 0 #fff, 0 8px 26px #3648540a; }
-.panel, .stat, .room-card { background: #ffffff9c; border-color: #ffffffe6; backdrop-filter: blur(24px) saturate(145%); -webkit-backdrop-filter: blur(24px) saturate(145%); box-shadow: inset 0 1px 0 #fff, 0 15px 32px #3b4c5f12; }
-.summary-card { backdrop-filter: blur(18px) saturate(135%); -webkit-backdrop-filter: blur(18px) saturate(135%); box-shadow: inset 0 1px 0 #fff, 0 6px 18px #3b4c5f0d; }
-.summary-card.mint { background: #fff0f2b8; border-color: #f6d1d9; color: #5d2f3a; }
+.glass-panel { background: linear-gradient(145deg, #ffffff87, #ffffff2e 55%, #d5fff244); border-color: #ffffffe8; backdrop-filter: blur(25px) saturate(170%); -webkit-backdrop-filter: blur(25px) saturate(170%); box-shadow: inset 1px 1px 0 #ffffffed, inset -1px -1px 0 #ffffff6b, 0 22px 48px #244c541f, 0 3px 9px #244c540c; }
+.glass-inner { background: linear-gradient(155deg, #ffffff80, #ffffff30 54%, #e4f7f051); border-color: #ffffffc9; backdrop-filter: blur(15px) saturate(150%); -webkit-backdrop-filter: blur(15px) saturate(150%); box-shadow: inset 1px 1px 0 #ffffffec, inset -1px -1px 0 #ffffff78, 0 8px 26px #3648540d; }
+.panel, .stat, .room-card { background: linear-gradient(145deg, #ffffff9a, #ffffff40 62%, #e0f8f04d); border-color: #ffffffe0; backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%); box-shadow: inset 1px 1px 0 #ffffffec, inset -1px -1px 0 #ffffff66, 0 18px 38px #244c541a; }
+.summary-card { backdrop-filter: blur(12px) saturate(150%); -webkit-backdrop-filter: blur(12px) saturate(150%); box-shadow: inset 1px 1px 0 #ffffffea, inset -1px -1px 0 #ffffff6e, 0 9px 22px #3b4c5f12; }
+.summary-card.mint { background: linear-gradient(140deg, #ffe4e991, #ffffff2e 72%); border-color: #fff6f9b8; color: #5d2f3a; }
 .summary-card.mint .metric-icon { background: #f4c4cc; color: #9b3046; }
-.summary-card.lavender { background: #fceafabb; }
-.summary-card.rose { background: #fff1f0b8; }
-.summary-card.peach { background: #ffeadcb8; }
-.map-filter, .map-legend, .glass-search, .glass-select, .daily-strip, .date-cell, .row-open, .count-pill { background: #ffffff8c; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-color: #ffffffdc; box-shadow: inset 0 1px 0 #fff; }
-.glass-table-wrap { background: #ffffff49; border-color: #ffffffc2; }
-.guest-table th, th { background: #ffffffa3; }
-.guest-table tbody tr:nth-child(even) { background: #ffffff47; }
-.btn.secondary, .tabs .selected { background: #ffffff91; border-color: #ffffffdb; box-shadow: inset 0 1px 0 #fff, 0 4px 12px #3b4c5f0d; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
-input, select, textarea, .filters input, .filters select { background: #ffffffab; border-color: #ffffffde; box-shadow: inset 0 1px 0 #fff; }
+.summary-card.lavender { background: linear-gradient(140deg, #f9e1f28f, #ffffff30 72%); border-color: #fff7ffb8; }
+.summary-card.rose { background: linear-gradient(140deg, #ffe6dc8c, #ffffff30 72%); border-color: #fff7f3b8; }
+.summary-card.peach { background: linear-gradient(140deg, #ffe8d591, #ffffff30 72%); border-color: #fff9f4b8; }
+.map-filter, .map-legend, .glass-search, .glass-select, .daily-strip, .date-cell, .row-open, .count-pill, .cleaning-bar, .topbar .date, .live-pill { background: linear-gradient(145deg, #ffffffa3, #ffffff54); backdrop-filter: blur(14px) saturate(155%); -webkit-backdrop-filter: blur(14px) saturate(155%); border-color: #ffffffdb; box-shadow: inset 1px 1px 0 #fffffff0, 0 4px 12px #3b4c5f0c; }
+.glass-table-wrap { background: #ffffff3b; border-color: #ffffffc2; }
+.guest-table th, th { background: #ffffff80; }
+.guest-table tbody tr:nth-child(even) { background: #ffffff36; }
+.btn.secondary, .tabs .selected { background: linear-gradient(145deg, #ffffffa8, #ffffff4a); border-color: #ffffffdb; box-shadow: inset 1px 1px 0 #fffffff0, 0 4px 12px #3b4c5f0d; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
+input, select, textarea, .filters input, .filters select { background: #ffffff80; border-color: #ffffffde; box-shadow: inset 0 1px 0 #fff; }
+.login-form { background: linear-gradient(145deg, #ffffffb8, #ffffff59); box-shadow: inset 1px 1px 0 #fff, 0 18px 42px #244c541e; }
+.identity-card { background: linear-gradient(145deg, #ffffffa8, #ffffff58); }
 .clean-room-button { background: linear-gradient(140deg, #269e74, #176c54); color: white; border-color: #176c54; box-shadow: inset 0 1px 0 #ffffff78, 0 4px 12px #1b71542a; }
 .clean-room-button:hover { background: #125b45; }
 
@@ -398,3 +400,11 @@ input, select, textarea, .filters input, .filters select { background: #ffffffab
 .identity-close { width: 38px; height: 38px; border-radius: 10px; border: 1px solid #ffffffeb; background: #ffffffa8; color: #213d42; font-size: 27px; line-height: 1; }
 .identity-preview-dialog img { display: block; max-width: 100%; max-height: 75vh; margin: auto; object-fit: contain; border-radius: 9px; }
 .identity-preview-dialog iframe { display: block; width: 100%; height: 75vh; border: 0; border-radius: 9px; }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .sidebar, .glass-panel, .glass-inner, .panel, .stat, .room-card, .login-form { background: #f4f8f6; }
+  .summary-card.mint { background: #fff0f2; }
+  .summary-card.lavender { background: #fceafa; }
+  .summary-card.rose { background: #fff1f0; }
+  .summary-card.peach { background: #ffeadc; }
+}
