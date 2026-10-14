@@ -12,10 +12,10 @@ export QUEUE_CONNECTION=sync
 export MAIL_MAILER=log
 export LOG_CHANNEL=stderr
 export SESSION_SECURE_COOKIE=true
+export DEMO_MANAGER_EMAIL="${DEMO_MANAGER_EMAIL:-demo-manager@example.test}"
 
 if [ -z "${APP_KEY:-}" ]; then
-    echo 'APP_KEY must be set in the Render environment.' >&2
-    exit 1
+    export APP_KEY="$(php -r 'echo "base64:".base64_encode(random_bytes(32));')"
 fi
 
 touch "$DB_DATABASE"
