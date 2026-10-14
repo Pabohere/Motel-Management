@@ -42,8 +42,8 @@ class DemoDataSeeder extends Seeder
 
     public function run(): void
     {
-        if (! app()->environment(['local', 'testing'])) {
-            throw new RuntimeException('Demo data ကို local သို့မဟုတ် testing environment တွင်သာ ထည့်နိုင်သည်။');
+        if (! app()->environment(['local', 'testing', 'demo'])) {
+            throw new RuntimeException('Demo data ကို local, testing သို့မဟုတ် demo environment တွင်သာ ထည့်နိုင်သည်။');
         }
 
         $manager = User::where('role', 'manager')->where('active', true)->first();
