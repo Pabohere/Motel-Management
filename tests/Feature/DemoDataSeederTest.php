@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Expense;
+use App\Models\Floor;
 use App\Models\Room;
+use App\Models\RoomType;
 use App\Models\Stay;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,7 +20,8 @@ class DemoDataSeederTest extends TestCase
     {
         Storage::fake('local');
         $manager = User::factory()->create(['role' => 'manager']);
-        $existingRoom = Room::create(['number' => '101', 'floor' => 1, 'type' => 'Standard', 'rate' => 35000]);
+        $existingRoom = Room::create(['number' => '101', 'floor_id' => Floor::create(['number' => 1])->id,
+            'room_type_id' => RoomType::create(['name' => 'Standard'])->id, 'rate' => 35000]);
         $existingStay = Stay::create([
             'room_id' => $existingRoom->id,
             'active_room_id' => $existingRoom->id,
@@ -40,9 +43,9 @@ class DemoDataSeederTest extends TestCase
         $this->assertSame(40, Stay::where('guest_name', 'like', 'Demo %')->whereNotNull('check_out_at')->count());
         $this->assertSame(25, Stay::where('guest_name', 'like', 'Demo %')->where('gender', 'male')->count());
         $this->assertSame(25, Stay::where('guest_name', 'like', 'Demo %')->where('gender', 'female')->count());
-        $this->assertSame(4, Room::where('type', 'like', 'Demo %')->where('status', 'dirty')->count());
-        $this->assertSame(3, Room::where('type', 'like', 'Demo %')->where('status', 'maintenance')->count());
-        $this->assertSame(10, Room::where('type', 'like', 'Demo %')->where('status', 'occupied')->count());
+        $this->assertSame(4, Room::whereHas('roomType', fn ($q) => $q->where('name', 'like', 'Demo %'))->where('status', 'dirty')->count());
+        $this->assertSame(3, Room::whereHas('roomType', fn ($q) => $q->where('name', 'like', 'Demo %'))->where('status', 'maintenance')->count());
+        $this->assertSame(10, Room::whereHas('roomType', fn ($q) => $q->where('name', 'like', 'Demo %'))->where('status', 'occupied')->count());
         $this->assertTrue(Stay::where('guest_name', 'like', 'Demo %')->whereNotNull('check_out_at')->with(['charges', 'payments'])->get()->every(fn (Stay $stay) => $stay->balance === 0));
         $this->assertSame(5, Stay::where('guest_name', 'like', 'Demo %')->withCount('identityDocuments')->get()->sum('identity_documents_count'));
         Storage::disk('local')->assertExists('guest-identities/demo-identity-41.pdf');

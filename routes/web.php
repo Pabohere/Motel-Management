@@ -38,6 +38,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/reports/monthly/export', [MonthlyReportController::class, 'export'])->name('reports.monthly.export');
         Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
         Route::post('/rooms', [RoomController::class, 'store'])->name('rooms.store');
+        Route::post('/floors', [RoomController::class, 'storeFloor'])->name('floors.store');
+        Route::post('/room-types', [RoomController::class, 'storeRoomType'])->name('room-types.store');
         Route::get('/rooms/{room}/edit', [RoomController::class, 'edit'])->name('rooms.edit');
         Route::put('/rooms/{room}', [RoomController::class, 'update'])->name('rooms.update');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');

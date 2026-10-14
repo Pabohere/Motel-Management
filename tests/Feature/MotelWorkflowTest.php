@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use App\Models\Expense;
+use App\Models\Floor;
 use App\Models\Room;
+use App\Models\RoomType;
 use App\Models\Stay;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -27,7 +29,8 @@ class MotelWorkflowTest extends TestCase
         parent::setUp();
         $this->travelTo(now()->setDate(2026, 10, 13)->setTime(10, 0));
         $this->staff = User::factory()->create(['role' => 'staff']);
-        $this->room = Room::create(['number' => '101', 'type' => 'Standard', 'rate' => 35000]);
+        $this->room = Room::create(['number' => '101', 'floor_id' => Floor::create(['number' => 1])->id,
+            'room_type_id' => RoomType::create(['name' => 'Standard'])->id, 'rate' => 35000]);
     }
 
     private function checkIn(array $extra = []): Stay
@@ -154,18 +157,50 @@ class MotelWorkflowTest extends TestCase
     {
         $this->staff->update(['role' => 'manager']);
         $this->actingAs($this->staff);
-        $this->post('/rooms', ['number' => '102', 'type' => 'Deluxe', 'rate' => 50000, 'floor' => 2])->assertSessionHasNoErrors();
+        $this->post(route('floors.store'), ['number' => 2])->assertSessionHasNoErrors();
+        $this->post(route('floors.store'), ['number' => 3])->assertSessionHasNoErrors();
+        $this->post(route('room-types.store'), ['name' => 'Deluxe'])->assertSessionHasNoErrors();
+        $this->post(route('room-types.store'), ['name' => 'Updated'])->assertSessionHasNoErrors();
+        $this->post('/rooms', ['number' => '102', 'room_type_id' => RoomType::where('name', 'Deluxe')->value('id'),
+            'rate' => 50000, 'floor_id' => Floor::where('number', 2)->value('id')])->assertSessionHasNoErrors();
         $this->patch(route('rooms.status', $this->room), ['status' => 'maintenance'])->assertSessionHasNoErrors();
-        $this->put(route('rooms.update', $this->room), ['number' => '101', 'type' => 'Updated', 'rate' => 45000, 'floor' => 3])->assertSessionHasNoErrors();
+        $this->put(route('rooms.update', $this->room), ['number' => '101', 'room_type_id' => RoomType::where('name', 'Updated')->value('id'),
+            'rate' => 45000, 'floor_id' => Floor::where('number', 3)->value('id')])->assertSessionHasNoErrors();
         $this->post('/users', ['name' => 'Reception', 'email' => 'staff@example.test', 'password' => 'a-long-test-password', 'password_confirmation' => 'a-long-test-password', 'role' => 'staff'])->assertSessionHasNoErrors();
         $user = User::where('email', 'staff@example.test')->firstOrFail();
         $this->put(route('users.update', $user), ['name' => 'Reception', 'role' => 'staff', 'active' => 0])->assertSessionHasNoErrors();
         $this->assertFalse($user->fresh()->active);
         $this->put(route('users.update', $this->staff), ['name' => 'Me', 'role' => 'staff', 'active' => 0])->assertSessionHasErrors('operation');
         $this->assertDatabaseHas('audit_logs', ['action' => 'room.updated']);
-        $this->assertSame(3, $this->room->fresh()->floor);
+        $this->assertSame(3, $this->room->fresh()->floor->number);
         $this->get(route('dashboard'))->assertOk()->assertSee('3 ထပ်');
         $this->assertStringNotContainsString('a-long-test-password', AuditLog::all()->toJson());
+    }
+
+    public function test_room_entry_requires_existing_floor_and_room_type_and_valid_values(): void
+    {
+        $this->staff->update(['role' => 'manager']);
+        $this->actingAs($this->staff);
+
+        $this->post(route('floors.store'), ['number' => 0])->assertSessionHasErrors('number');
+        $this->post(route('floors.store'), ['number' => 1])->assertSessionHasErrors('number');
+        $this->post(route('room-types.store'), ['name' => 'Standard'])->assertSessionHasErrors('name');
+        $this->post(route('room-types.store'), ['name' => str_repeat('x', 81)])->assertSessionHasErrors('name');
+
+        $valid = ['number' => '102', 'floor_id' => $this->room->floor_id,
+            'room_type_id' => $this->room->room_type_id, 'rate' => 35000];
+        $this->post(route('rooms.store'), array_diff_key($valid, ['room_type_id' => true]))->assertSessionHasErrors('room_type_id');
+        $this->post(route('rooms.store'), [...$valid, 'floor_id' => 999999])->assertSessionHasErrors('floor_id');
+        $this->post(route('rooms.store'), [...$valid, 'room_type_id' => 999999])->assertSessionHasErrors('room_type_id');
+        $this->post(route('rooms.store'), [...$valid, 'rate' => -1])->assertSessionHasErrors('rate');
+        $this->post(route('rooms.store'), [...$valid, 'number' => 'bad room'])->assertSessionHasErrors('number');
+        $this->post(route('rooms.store'), [...$valid, 'number' => '101'])->assertSessionHasErrors('number');
+        $this->assertSame(1, Room::count());
+
+        $this->post(route('rooms.store'), $valid)->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('rooms', ['number' => '102', 'floor_id' => $this->room->floor_id,
+            'room_type_id' => $this->room->room_type_id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'room.created']);
     }
 
     public function test_negative_fractional_and_invalid_payments_are_rejected(): void
@@ -293,7 +328,8 @@ class MotelWorkflowTest extends TestCase
             UploadedFile::fake()->create('large.pdf', 6000, 'application/pdf'),
         ]])->assertSessionHasErrors('identity_documents.0');
 
-        $otherRoom = Room::create(['number' => '102', 'type' => 'Standard', 'rate' => 35000]);
+        $otherRoom = Room::create(['number' => '102', 'floor_id' => $this->room->floor_id,
+            'room_type_id' => $this->room->room_type_id, 'rate' => 35000]);
         $otherStay = Stay::create([
             'room_id' => $otherRoom->id, 'active_room_id' => $otherRoom->id, 'guest_name' => 'Other guest',
             'phone' => '09', 'check_in_at' => now(), 'expected_check_out_at' => now()->addDay(),

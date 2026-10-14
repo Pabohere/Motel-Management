@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Floor;
 use App\Models\Room;
+use App\Models\RoomType;
 use App\Services\Audit;
 use App\Services\FrontDesk;
 use Illuminate\Http\Request;
@@ -14,14 +16,41 @@ class RoomController extends Controller
     public function index(Request $request)
     {
         $data = $request->validate(['status' => ['nullable', Rule::in(array_keys(Room::STATUSES))]]);
-        $rooms = Room::with('activeStay')->when($data['status'] ?? null, fn ($q, $s) => $q->where('status', $s))->orderBy('floor')->orderBy('number')->get();
+        $rooms = Room::with(['activeStay', 'floor', 'roomType'])
+            ->when($data['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
+            ->join('floors', 'floors.id', '=', 'rooms.floor_id')
+            ->orderBy('floors.number')->orderBy('rooms.number')->select('rooms.*')->get();
+        $floors = Floor::orderBy('number')->get();
+        $roomTypes = RoomType::orderBy('name')->get();
 
-        return view('rooms.index', compact('rooms'));
+        return view('rooms.index', compact('rooms', 'floors', 'roomTypes'));
+    }
+
+    public function storeFloor(Request $request)
+    {
+        $data = $request->validate(['number' => ['required', 'integer', 'between:1,99', 'unique:floors,number']]);
+        DB::transaction(function () use ($data) {
+            $floor = Floor::create($data);
+            Audit::record('floor.created', $floor, null, $floor->toArray());
+        });
+
+        return back()->with('success', 'အထပ်အသစ် ထည့်ပြီးပါပြီ။');
+    }
+
+    public function storeRoomType(Request $request)
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:80', 'unique:room_types,name']]);
+        DB::transaction(function () use ($data) {
+            $roomType = RoomType::create($data);
+            Audit::record('room_type.created', $roomType, null, $roomType->toArray());
+        });
+
+        return back()->with('success', 'အခန်းအမျိုးအစား ထည့်ပြီးပါပြီ။');
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate(['number' => 'required|string|max:20|unique:rooms', 'floor' => 'required|integer|min:1|max:99', 'type' => 'required|string|max:80', 'rate' => 'required|integer|min:0|max:100000000']);
+        $data = $request->validate($this->roomRules());
         DB::transaction(function () use ($data) {
             $room = Room::create($data);
             Audit::record('room.created', $room, null, $room->toArray());
@@ -32,12 +61,15 @@ class RoomController extends Controller
 
     public function edit(Room $room)
     {
-        return view('rooms.edit', compact('room'));
+        $floors = Floor::orderBy('number')->get();
+        $roomTypes = RoomType::orderBy('name')->get();
+
+        return view('rooms.edit', compact('room', 'floors', 'roomTypes'));
     }
 
     public function update(Request $request, Room $room)
     {
-        $data = $request->validate(['number' => ['required', 'string', 'max:20', Rule::unique('rooms')->ignore($room->id)], 'floor' => 'required|integer|min:1|max:99', 'type' => 'required|string|max:80', 'rate' => 'required|integer|min:0|max:100000000']);
+        $data = $request->validate($this->roomRules($room));
         DB::transaction(function () use ($room, $data) {
             $locked = Room::lockForUpdate()->findOrFail($room->id);
             $before = $locked->toArray();
@@ -54,5 +86,15 @@ class RoomController extends Controller
         $desk->roomStatus($room, $data['status']);
 
         return back()->with('success', 'အခန်းအခြေအနေ ပြောင်းပြီးပါပြီ။');
+    }
+
+    private function roomRules(?Room $room = null): array
+    {
+        return [
+            'number' => ['required', 'string', 'max:20', 'regex:/^[A-Za-z0-9-]+$/', Rule::unique('rooms', 'number')->ignore($room?->id)],
+            'floor_id' => ['required', 'integer', Rule::exists('floors', 'id')],
+            'room_type_id' => ['required', 'integer', Rule::exists('room_types', 'id')],
+            'rate' => ['required', 'integer', 'between:1,100000000'],
+        ];
     }
 }

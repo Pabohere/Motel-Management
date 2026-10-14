@@ -4,7 +4,9 @@ namespace Database\Seeders;
 
 use App\Models\AuditLog;
 use App\Models\Expense;
+use App\Models\Floor;
 use App\Models\Room;
+use App\Models\RoomType;
 use App\Models\Stay;
 use App\Models\User;
 use Carbon\Carbon;
@@ -66,15 +68,17 @@ class DemoDataSeeder extends Seeder
                 6 => 'Demo Deluxe',
                 default => 'Demo Suite',
             };
+            $floor = Floor::firstOrCreate(['number' => intdiv($number, 100)]);
+            $roomType = RoomType::firstOrCreate(['name' => $type]);
             $room = Room::firstOrCreate(['number' => (string) $number], [
-                'floor' => intdiv($number, 100),
-                'type' => $type,
+                'floor_id' => $floor->id,
+                'room_type_id' => $roomType->id,
                 'rate' => match (intdiv($number, 100)) {
                     5 => 35000, 6 => 50000, default => 75000
                 },
                 'status' => 'available',
             ]);
-            if ($room->type !== $type) {
+            if ($room->room_type_id !== $roomType->id || $room->floor_id !== $floor->id) {
                 throw new RuntimeException("အခန်း {$number} ရှိပြီးသားဖြစ်၍ demo data မထည့်ပါ။");
             }
             if ($room->wasRecentlyCreated) {

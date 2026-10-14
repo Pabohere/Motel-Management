@@ -32,7 +32,7 @@ class StayController extends Controller
 
     public function create(Request $request)
     {
-        $rooms = Room::where('status', 'available')->orderBy('number')->get();
+        $rooms = Room::with(['floor', 'roomType'])->where('status', 'available')->orderBy('number')->get();
         $selectedRoom = $rooms->firstWhere('id', (int) $request->query('room'));
 
         return view('stays.create', compact('rooms', 'selectedRoom'));

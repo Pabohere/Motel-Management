@@ -2,7 +2,7 @@
 @section('title', 'အနှစ်ချုပ်')
 @section('content')
 <div class="page-heading dashboard-heading">
-    <div><span class="eyebrow">MOTEL / OVERVIEW</span><h1>မိုတယ် အနှစ်ချုပ်<span class="heading-spark">✦</span></h1><p class="muted">သင့်မိုတယ်ရဲ့ နေ့စဉ်လုပ်ငန်းခွင်၊ တစ်နေရာတည်းမှာ။</p></div>
+    <div><span class="eyebrow">MOTEL / OVERVIEW</span><h1>မိုတယ် အနှစ်ချုပ်</h1><p class="muted">သင့်မိုတယ်ရဲ့ နေ့စဉ်လုပ်ငန်းခွင်၊ တစ်နေရာတည်းမှာ။</p></div>
     <span class="live-pill"><span class="dot"></span> {{ now()->format('d M Y') }} · လက်ရှိအခြေအနေ</span>
 </div>
 <div class="dashboard-top">
@@ -27,7 +27,7 @@
                            href="{{ $room->activeStay ? route('stays.show', $room->activeStay) : ($room->status === 'available' ? route('stays.create', ['room'=>$room->id]) : route('rooms.index', ['status'=>$room->status])) }}"
                            title="{{ $floor }} ထပ် · {{ $room->number }} · {{ \App\Models\Room::STATUSES[$room->status] }}{{ $room->activeStay ? ' · '.$room->activeStay->guest_name : '' }}"
                            aria-label="{{ $floor }} ထပ်၊ အခန်း {{ $room->number }}၊ {{ \App\Models\Room::STATUSES[$room->status] }}">
-                            <span class="tile-indicator"></span><strong>{{ $room->number }}</strong><small>{{ $room->type }}</small>
+                            <span class="tile-indicator"></span><strong>{{ $room->number }}</strong><small>{{ $room->roomType->name }}</small>
                         </a>
                     @endforeach
                     </div>
