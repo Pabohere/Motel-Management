@@ -15,7 +15,7 @@ class Payment extends Model
 
     public function stay()
     {
-        return $this->belongsTo(Stay::class);
+        return $this->belongsTo(Stay::class)->withTrashed();
     }
 
     public function creator()

@@ -26,7 +26,7 @@ class UserController extends Controller
             Audit::record('user.created', $user, null, $user->only(['name', 'email', 'role', 'active']));
         });
 
-        return back()->with('success', 'ဝန်ထမ်းအကောင့် ထည့်ပြီးပါပြီ။');
+        return back()->with('success', __('ဝန်ထမ်းအကောင့် ထည့်ပြီးပါပြီ။'));
     }
 
     public function update(Request $request, User $user)
@@ -37,10 +37,10 @@ class UserController extends Controller
             $managers = User::where('role', 'manager')->where('active', true)->lockForUpdate()->get();
             $locked = User::lockForUpdate()->findOrFail($user->id);
             if ($user->id === $request->user()->id && (! $data['active'] || $data['role'] !== 'manager')) {
-                throw ValidationException::withMessages(['operation' => 'ကိုယ့်မန်နေဂျာအကောင့်ကို ပိတ်ခြင်း/အဆင့်လျှော့ခြင်း မပြုနိုင်ပါ။']);
+                throw ValidationException::withMessages(['operation' => __('ကိုယ့်မန်နေဂျာအကောင့်ကို ပိတ်ခြင်း/အဆင့်လျှော့ခြင်း မပြုနိုင်ပါ။')]);
             }
             if ($locked->isManager() && $locked->active && (! $data['active'] || $data['role'] !== 'manager') && $managers->count() <= 1) {
-                throw ValidationException::withMessages(['operation' => 'အနည်းဆုံး မန်နေဂျာတစ်ဦး ရှိရပါမည်။']);
+                throw ValidationException::withMessages(['operation' => __('အနည်းဆုံး မန်နေဂျာတစ်ဦး ရှိရပါမည်။')]);
             }
             $before = $locked->only(['name', 'role', 'active']);
             $locked->update($data);
@@ -50,6 +50,6 @@ class UserController extends Controller
             Audit::record('user.updated', $locked, $before, $locked->only(['name', 'role', 'active']));
         });
 
-        return back()->with('success', 'ဝန်ထမ်းအကောင့် ပြင်ပြီးပါပြီ။');
+        return back()->with('success', __('ဝန်ထမ်းအကောင့် ပြင်ပြီးပါပြီ။'));
     }
 }

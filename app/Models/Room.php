@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Room extends Model
 {
+    use SoftDeletes;
+
     public const STATUSES = ['available' => 'အားလပ်', 'occupied' => 'ဧည့်သည်ရှိ', 'dirty' => 'သန့်ရှင်းရေးလို', 'maintenance' => 'ပြင်ဆင်နေ'];
 
     protected $attributes = ['status' => 'available'];

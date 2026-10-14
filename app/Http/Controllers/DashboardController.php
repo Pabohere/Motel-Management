@@ -19,7 +19,7 @@ class DashboardController extends Controller
         $checkIns = Stay::where('check_in_at', '>=', $start)->where('check_in_at', '<', $end)->count();
         $checkOuts = Stay::where('check_out_at', '>=', $start)->where('check_out_at', '<', $end)->count();
         $received = Payment::where('created_at', '>=', $start)->where('created_at', '<', $end)->sum('amount');
-        $activeStays = Stay::with(['room', 'charges', 'payments'])->whereNull('check_out_at')->orderBy('expected_check_out_at')->get();
+        $activeStays = Stay::with(['room', 'charges', 'payments'])->whereNull('check_out_at')->orderByDesc('check_in_at')->orderByDesc('id')->get();
 
         return view('dashboard', compact('rooms', 'floors', 'counts', 'checkIns', 'checkOuts', 'received', 'activeStays'));
     }

@@ -20,8 +20,12 @@ class StayController extends Controller
 {
     public function index(Request $request)
     {
-        $data = $request->validate(['q' => 'nullable|string|max:100', 'status' => ['nullable', Rule::in(['active', 'completed'])]]);
+        $data = $request->validate(['q' => 'nullable|string|max:100', 'status' => ['nullable', Rule::in(['active', 'completed', 'archived'])]]);
+        if (($data['status'] ?? null) === 'archived' && ! $request->user()->isManager()) {
+            abort(403);
+        }
         $stays = Stay::with(['room', 'charges', 'payments', 'identityDocuments'])
+            ->when(($data['status'] ?? '') === 'archived', fn ($q) => $q->onlyTrashed())
             ->when($data['q'] ?? null, fn ($q, $term) => $q->where(fn ($q) => $q->where('guest_name', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%')))
             ->when(($data['status'] ?? '') === 'active', fn ($q) => $q->whereNull('check_out_at'))
             ->when(($data['status'] ?? '') === 'completed', fn ($q) => $q->whereNotNull('check_out_at'))
@@ -57,7 +61,7 @@ class StayController extends Controller
             throw $exception;
         }
 
-        return redirect()->route('stays.show', $stay)->with('success', 'Check-in လုပ်ပြီးပါပြီ။');
+        return redirect()->route('stays.show', $stay)->with('success', __('Check-in လုပ်ပြီးပါပြီ။'));
     }
 
     public function show(Stay $stay)
@@ -67,11 +71,26 @@ class StayController extends Controller
         return view('stays.show', compact('stay'));
     }
 
+    public function edit(Stay $stay)
+    {
+        if ($stay->check_out_at && ! auth()->user()->isManager()) {
+            abort(403);
+        }
+        $stay->load('identityDocuments');
+
+        return view('stays.edit', compact('stay'));
+    }
+
     public function update(Request $request, Stay $stay)
     {
+        if ($stay->check_out_at && ! $request->user()->isManager()) {
+            throw ValidationException::withMessages(['operation' => __('ထွက်ပြီးသောဧည့်သည်ကို မန်နေဂျာသာ ပြင်နိုင်ပါသည်။')]);
+        }
         $data = $request->validate([
             'guest_name' => 'required|string|max:150', 'gender' => ['required', Rule::in(array_keys(Stay::GENDERS))], 'phone' => 'required|string|max:40', 'notes' => 'nullable|string|max:2000',
-            'expected_check_out_at' => 'required|date|after:'.$stay->check_in_at->toDateTimeString().'|after:now',
+            'expected_check_out_at' => $stay->check_out_at
+                ? 'required|date|after:'.$stay->check_in_at->toDateTimeString()
+                : 'required|date|after:'.$stay->check_in_at->toDateTimeString().'|after:now',
             'identity_documents' => 'nullable|array|max:5',
             'identity_documents.*' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
         ]);
@@ -80,11 +99,11 @@ class StayController extends Controller
         try {
             DB::transaction(function () use ($stay, $data, $paths): void {
                 $locked = Stay::lockForUpdate()->findOrFail($stay->id);
-                if ($locked->check_out_at) {
-                    throw ValidationException::withMessages(['operation' => 'ထွက်ပြီးမှ ပြင်၍မရပါ။']);
+                if ($locked->check_out_at && ! auth()->user()->isManager()) {
+                    throw ValidationException::withMessages(['operation' => __('ထွက်ပြီးသောဧည့်သည်ကို မန်နေဂျာသာ ပြင်နိုင်ပါသည်။')]);
                 }
                 if ($locked->identityDocuments()->count() + count($paths) > 5) {
-                    throw ValidationException::withMessages(['identity_documents' => 'အထောက်အထားဖိုင် စုစုပေါင်း ၅ ဖိုင်အထိသာ တင်နိုင်ပါသည်။']);
+                    throw ValidationException::withMessages(['identity_documents' => __('အထောက်အထားဖိုင် စုစုပေါင်း ၅ ဖိုင်အထိသာ တင်နိုင်ပါသည်။')]);
                 }
                 $before = $locked->toArray();
                 $locked->update($data);
@@ -99,7 +118,35 @@ class StayController extends Controller
             throw $exception;
         }
 
-        return back()->with('success', 'ဧည့်သည်အချက်အလက် ပြင်ပြီးပါပြီ။');
+        return redirect()->route('stays.show', $stay)->with('success', __('ဧည့်သည်အချက်အလက် ပြင်ပြီးပါပြီ။'));
+    }
+
+    public function destroy(Stay $stay)
+    {
+        DB::transaction(function () use ($stay): void {
+            $locked = Stay::lockForUpdate()->findOrFail($stay->id);
+            if (! $locked->check_out_at) {
+                throw ValidationException::withMessages(['operation' => __('တည်းခိုနေသောဧည့်သည်ကို ဖျက်၍မရပါ။ Check-out အရင်လုပ်ပါ။')]);
+            }
+            $before = $locked->toArray();
+            $locked->delete();
+            Audit::record('stay.archived', $locked, $before, $locked->toArray());
+        });
+
+        return redirect()->route('stays.index')->with('success', __('ဧည့်သည်မှတ်တမ်းကို archive ထဲရွှေ့ပြီးပါပြီ။ ပြန်ယူနိုင်ပါသည်။'));
+    }
+
+    public function restore(Stay $stay)
+    {
+        abort_unless($stay->trashed(), 404);
+        DB::transaction(function () use ($stay): void {
+            $locked = Stay::withTrashed()->lockForUpdate()->findOrFail($stay->id);
+            $before = $locked->toArray();
+            $locked->restore();
+            Audit::record('stay.restored', $locked, $before, $locked->toArray());
+        });
+
+        return redirect()->route('stays.index', ['status' => 'archived'])->with('success', __('ဧည့်သည်မှတ်တမ်းကို ပြန်ယူပြီးပါပြီ။'));
     }
 
     public function charge(Request $request, Stay $stay, FrontDesk $desk)
@@ -107,7 +154,7 @@ class StayController extends Controller
         $data = $request->validate(['description' => 'required|string|max:255', 'amount' => 'required|integer|min:1|max:100000000']);
         $desk->charge($stay, $data);
 
-        return back()->with('success', 'အပိုကျသင့်ငွေ ထည့်ပြီးပါပြီ။');
+        return back()->with('success', __('အပိုကျသင့်ငွေ ထည့်ပြီးပါပြီ။'));
     }
 
     public function identityDocument(Stay $stay, ?StayIdentityDocument $document = null): StreamedResponse
@@ -137,7 +184,7 @@ class StayController extends Controller
             foreach ($request->file('identity_documents', []) as $file) {
                 $path = $file->store('guest-identities', 'local');
                 if (! $path) {
-                    throw new RuntimeException('အထောက်အထားဖိုင် သိမ်း၍မရပါ။');
+                    throw new RuntimeException(__('အထောက်အထားဖိုင် သိမ်း၍မရပါ။'));
                 }
                 $paths[] = $path;
             }
@@ -154,13 +201,13 @@ class StayController extends Controller
         $data = $request->validate(['amount' => 'required|integer|min:1|max:100000000', 'method' => ['required', Rule::in(['cash', 'transfer', 'card'])], 'note' => 'nullable|string|max:255']);
         $desk->payment($stay, $data);
 
-        return back()->with('success', 'လက်ခံရရှိငွေ မှတ်ပြီးပါပြီ။');
+        return back()->with('success', __('လက်ခံရရှိငွေ မှတ်ပြီးပါပြီ။'));
     }
 
     public function checkOut(Stay $stay, FrontDesk $desk)
     {
         $desk->checkOut($stay);
 
-        return back()->with('success', 'Check-out လုပ်ပြီးပါပြီ။ အခန်းကို သန့်ရှင်းရေးလုပ်ရန် လိုအပ်ပါသည်။');
+        return back()->with('success', __('Check-out လုပ်ပြီးပါပြီ။ အခန်းကို သန့်ရှင်းရေးလုပ်ရန် လိုအပ်ပါသည်။'));
     }
 }

@@ -20,7 +20,7 @@ class FrontDesk
     {
         return DB::transaction(function () use ($data, $identityPaths) {
             $room = Room::lockForUpdate()->findOrFail($data['room_id']);
-            self::require($room->status === 'available' && ! $room->activeStay()->exists(), 'အားလပ်သောအခန်းကိုသာ ရွေးနိုင်ပါသည်။');
+            self::require($room->status === 'available' && ! $room->activeStay()->exists(), __('အားလပ်သောအခန်းကိုသာ ရွေးနိုင်ပါသည်။'));
             $stay = Stay::create([
                 ...collect($data)->only(['guest_name', 'gender', 'phone', 'notes', 'check_in_at', 'expected_check_out_at', 'room_charge'])->all(),
                 'room_id' => $room->id, 'active_room_id' => $room->id, 'created_by' => auth()->id(),
@@ -45,7 +45,7 @@ class FrontDesk
     {
         DB::transaction(function () use ($stay, $data) {
             $locked = Stay::lockForUpdate()->findOrFail($stay->id);
-            self::require($locked->check_out_at === null, 'ထွက်ပြီးသောဧည့်သည်အတွက် အပိုငွေမထည့်နိုင်ပါ။');
+            self::require($locked->check_out_at === null, __('ထွက်ပြီးသောဧည့်သည်အတွက် အပိုငွေမထည့်နိုင်ပါ။'));
             $charge = $locked->charges()->create([...$data, 'created_by' => auth()->id()]);
             Audit::record('charge.created', $charge, null, $charge->toArray());
         }, 3);
@@ -55,7 +55,7 @@ class FrontDesk
     {
         DB::transaction(function () use ($stay, $data) {
             $locked = Stay::lockForUpdate()->findOrFail($stay->id);
-            self::require($data['amount'] <= $locked->balance, 'ပေးငွေသည် ကျန်ငွေထက် မများရပါ။');
+            self::require($data['amount'] <= $locked->balance, __('ပေးငွေသည် ကျန်ငွေထက် မများရပါ။'));
             $payment = $locked->payments()->create([...$data, 'created_by' => auth()->id()]);
             Audit::record('payment.created', $payment, null, $payment->toArray());
         }, 3);
@@ -67,8 +67,8 @@ class FrontDesk
             // All room/stay transitions use the same lock order.
             $room = Room::lockForUpdate()->findOrFail($stay->room_id);
             $locked = Stay::lockForUpdate()->findOrFail($stay->id);
-            self::require($locked->check_out_at === null, 'ဤဧည့်သည်ကို Check-out လုပ်ပြီးပါပြီ။');
-            self::require($locked->balance === 0, 'ကျန်ငွေကို အရင်ရှင်းပေးပါ။');
+            self::require($locked->check_out_at === null, __('ဤဧည့်သည်ကို Check-out လုပ်ပြီးပါပြီ။'));
+            self::require($locked->balance === 0, __('ကျန်ငွေကို အရင်ရှင်းပေးပါ။'));
             $before = $locked->toArray();
             $locked->update(['check_out_at' => now(), 'active_room_id' => null]);
             Audit::record('stay.check_out', $locked, $before, $locked->toArray());
@@ -82,11 +82,11 @@ class FrontDesk
     {
         DB::transaction(function () use ($room, $status) {
             $locked = Room::lockForUpdate()->findOrFail($room->id);
-            self::require(! $locked->activeStay()->exists() && $locked->status !== 'occupied', 'ဧည့်သည်ရှိသောအခန်းကို မပြောင်းနိုင်ပါ။');
-            self::require(in_array($status, ['available', 'dirty', 'maintenance'], true), 'အခန်းအခြေအနေ မမှန်ပါ။');
+            self::require(! $locked->activeStay()->exists() && $locked->status !== 'occupied', __('ဧည့်သည်ရှိသောအခန်းကို မပြောင်းနိုင်ပါ။'));
+            self::require(in_array($status, ['available', 'dirty', 'maintenance'], true), __('အခန်းအခြေအနေ မမှန်ပါ။'));
             // Staff may only mark a dirty room clean; managers handle all other transitions.
             if (! auth()->user()->isManager()) {
-                self::require($locked->status === 'dirty' && $status === 'available', 'သန့်ရှင်းရေးပြီးသည့်အခန်းကိုသာ ပြောင်းနိုင်ပါသည်။');
+                self::require($locked->status === 'dirty' && $status === 'available', __('သန့်ရှင်းရေးပြီးသည့်အခန်းကိုသာ ပြောင်းနိုင်ပါသည်။'));
             }
             $before = $locked->toArray();
             $locked->update(['status' => $status]);

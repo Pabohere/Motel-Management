@@ -26,6 +26,6 @@ class ExpenseController extends Controller
         });
 
         return redirect()->route('reports.monthly', ['month' => substr($data['expense_date'], 0, 7)])
-            ->with('success', 'ထွက်ငွေ မှတ်တမ်းတင်ပြီးပါပြီ။');
+            ->with('success', __('ထွက်ငွေ မှတ်တမ်းတင်ပြီးပါပြီ။'));
     }
 }

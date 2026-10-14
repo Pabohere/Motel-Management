@@ -9,7 +9,16 @@ use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StayController;
 use App\Http\Controllers\UserController;
 use App\Models\AuditLog;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\Rule;
+
+Route::post('/locale', function (Request $request) {
+    $data = $request->validate(['locale' => ['required', Rule::in(['my', 'en'])]]);
+    $request->session()->put('locale', $data['locale']);
+
+    return back();
+})->middleware('throttle:20,1')->name('locale.update');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'login'])->name('login');
@@ -21,13 +30,15 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/password', [AuthController::class, 'password'])->name('password.edit');
     Route::put('/password', [AuthController::class, 'updatePassword'])->name('password.update');
     Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
+    Route::get('/rooms/{room}', [RoomController::class, 'show'])->withTrashed()->name('rooms.show');
     Route::patch('/rooms/{room}/status', [RoomController::class, 'status'])->name('rooms.status');
     Route::get('/stays', [StayController::class, 'index'])->name('stays.index');
     Route::get('/stays/create', [StayController::class, 'create'])->name('stays.create');
     Route::post('/stays', [StayController::class, 'store'])->name('stays.store');
-    Route::get('/stays/{stay}', [StayController::class, 'show'])->name('stays.show');
-    Route::get('/stays/{stay}/identity', [StayController::class, 'identityDocument'])->name('stays.identity');
-    Route::get('/stays/{stay}/identity/{document}', [StayController::class, 'identityDocument'])->name('stays.identity.show');
+    Route::get('/stays/{stay}', [StayController::class, 'show'])->withTrashed()->name('stays.show');
+    Route::get('/stays/{stay}/edit', [StayController::class, 'edit'])->name('stays.edit');
+    Route::get('/stays/{stay}/identity', [StayController::class, 'identityDocument'])->withTrashed()->name('stays.identity');
+    Route::get('/stays/{stay}/identity/{document}', [StayController::class, 'identityDocument'])->withTrashed()->name('stays.identity.show');
     Route::put('/stays/{stay}', [StayController::class, 'update'])->name('stays.update');
     Route::post('/stays/{stay}/charges', [StayController::class, 'charge'])->name('stays.charges');
     Route::post('/stays/{stay}/payments', [StayController::class, 'payment'])->middleware('throttle:30,1')->name('stays.payments');
@@ -42,6 +53,10 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/room-types', [RoomController::class, 'storeRoomType'])->name('room-types.store');
         Route::get('/rooms/{room}/edit', [RoomController::class, 'edit'])->name('rooms.edit');
         Route::put('/rooms/{room}', [RoomController::class, 'update'])->name('rooms.update');
+        Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])->name('rooms.destroy');
+        Route::post('/rooms/{room}/restore', [RoomController::class, 'restore'])->withTrashed()->name('rooms.restore');
+        Route::delete('/stays/{stay}', [StayController::class, 'destroy'])->name('stays.destroy');
+        Route::post('/stays/{stay}/restore', [StayController::class, 'restore'])->withTrashed()->name('stays.restore');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');

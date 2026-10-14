@@ -19,7 +19,7 @@ class AuthController extends Controller
     {
         $data = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
         if (! Auth::attempt([...$data, 'active' => true])) {
-            return back()->withErrors(['email' => 'အီးမေးလ် သို့မဟုတ် စကားဝှက် မမှန်ပါ။'])->onlyInput('email');
+            return back()->withErrors(['email' => __('အီးမေးလ် သို့မဟုတ် စကားဝှက် မမှန်ပါ။')])->onlyInput('email');
         }
         $request->session()->regenerate();
         Audit::record('auth.login', $request->user());
@@ -52,6 +52,6 @@ class AuthController extends Controller
         });
         $request->session()->regenerate();
 
-        return back()->with('success', 'စကားဝှက် ပြောင်းပြီးပါပြီ။');
+        return back()->with('success', __('စကားဝှက် ပြောင်းပြီးပါပြီ။'));
     }
 }

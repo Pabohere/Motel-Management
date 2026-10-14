@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Stay extends Model
 {
+    use SoftDeletes;
+
     public const GENDERS = ['male' => 'ကျား', 'female' => 'မ'];
 
     protected $guarded = ['id'];
@@ -18,7 +21,7 @@ class Stay extends Model
 
     public function room()
     {
-        return $this->belongsTo(Room::class);
+        return $this->belongsTo(Room::class)->withTrashed();
     }
 
     public function charges()

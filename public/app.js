@@ -2,6 +2,14 @@
 document.querySelectorAll('form').forEach(form => {
   form.addEventListener('submit', event => {
     if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) { event.preventDefault(); return; }
+    // Disabled submit buttons are omitted from the request, including the language choice.
+    if (event.submitter?.name) {
+      const submittedValue = document.createElement('input');
+      submittedValue.type = 'hidden';
+      submittedValue.name = event.submitter.name;
+      submittedValue.value = event.submitter.value;
+      form.appendChild(submittedValue);
+    }
     const buttons = form.querySelectorAll('button[type="submit"], button:not([type])');
     buttons.forEach(button => { button.disabled = true; });
   });
@@ -62,13 +70,28 @@ guestSearch?.addEventListener('input', () => {
 });
 document.getElementById('guest-sort')?.addEventListener('change', event => {
   const sort = event.target.value;
-  const collator = new Intl.Collator('my', {numeric:true, sensitivity:'base'});
+  const collator = new Intl.Collator(document.documentElement.lang, {numeric:true, sensitivity:'base'});
   guestRows.sort((a,b) => sort === 'checkout'
     ? Number(a.dataset.checkout) - Number(b.dataset.checkout)
+    : sort === 'latest' ? Number(b.dataset.checkin) - Number(a.dataset.checkin)
     : collator.compare(a.dataset[sort], b.dataset[sort]));
   const body = document.getElementById('guest-table-body');
   const emptyRow = document.getElementById('guest-empty-row');
   guestRows.forEach(row => body.insertBefore(row, emptyRow));
+});
+
+document.querySelectorAll('[data-row-link]').forEach(row => {
+  row.addEventListener('click', event => {
+    if (!event.target.closest('a, button, input, select, textarea, form, label')) {
+      window.location.assign(row.dataset.rowLink);
+    }
+  });
+  row.addEventListener('keydown', event => {
+    if (event.target === row && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      window.location.assign(row.dataset.rowLink);
+    }
+  });
 });
 
 document.querySelectorAll('input[data-max-files]').forEach(input => {
@@ -76,7 +99,9 @@ document.querySelectorAll('input[data-max-files]').forEach(input => {
     const remaining = Number(input.dataset.maxFiles);
     if (input.files.length > remaining) {
       input.value = '';
-      window.alert(`နောက်ထပ် ${remaining} ဖိုင်အထိသာ တင်နိုင်ပါသည်။`);
+      window.alert(document.documentElement.lang === 'en'
+        ? `You can upload up to ${remaining} more files.`
+        : `နောက်ထပ် ${remaining} ဖိုင်အထိသာ တင်နိုင်ပါသည်။`);
     }
   });
 });

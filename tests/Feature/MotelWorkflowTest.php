@@ -203,6 +203,65 @@ class MotelWorkflowTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'room.created']);
     }
 
+    public function test_manager_can_archive_and_restore_an_empty_room(): void
+    {
+        $this->staff->update(['role' => 'manager']);
+        $this->actingAs($this->staff);
+        $this->get(route('rooms.show', $this->room))->assertOk()->assertSee('အခန်း 101');
+        $this->delete(route('rooms.destroy', $this->room))->assertRedirect(route('rooms.index'));
+        $this->assertSoftDeleted('rooms', ['id' => $this->room->id]);
+        $this->get(route('rooms.index'))->assertDontSee('အခန်း 101');
+        $this->get(route('rooms.index', ['status' => 'archived']))->assertOk()->assertSee('101');
+        $this->get(route('rooms.show', $this->room))->assertOk()->assertSee('Archive');
+        $this->post(route('rooms.restore', $this->room))->assertSessionHasNoErrors();
+        $this->assertSame(1, Room::count());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'room.archived']);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'room.restored']);
+    }
+
+    public function test_active_room_and_stay_cannot_be_archived_and_staff_cannot_delete(): void
+    {
+        $stay = $this->checkIn(['deposit' => 35000]);
+        $this->delete(route('rooms.destroy', $this->room))->assertForbidden();
+        $this->delete(route('stays.destroy', $stay))->assertForbidden();
+        $this->staff->update(['role' => 'manager']);
+        $this->delete(route('rooms.destroy', $this->room))->assertSessionHasErrors('operation');
+        $this->delete(route('stays.destroy', $stay))->assertSessionHasErrors('operation');
+        $this->assertSame('occupied', $this->room->fresh()->status);
+        $this->assertSame(1, Stay::count());
+    }
+
+    public function test_completed_guest_can_be_edited_archived_and_restored_without_losing_financial_history(): void
+    {
+        Storage::fake('local');
+        $stay = $this->checkIn(['deposit' => 35000, 'identity_documents' => [UploadedFile::fake()->create('id.jpg', 20, 'image/jpeg')]]);
+        $document = $stay->identityDocuments()->firstOrFail();
+        $this->post(route('stays.checkout', $stay))->assertSessionHasNoErrors();
+        $this->staff->update(['role' => 'manager']);
+        $this->get(route('stays.edit', $stay))->assertOk()->assertSee('Test Guest');
+        $this->put(route('stays.update', $stay), [
+            'guest_name' => 'Corrected Guest', 'gender' => 'female', 'phone' => '0999888777',
+            'expected_check_out_at' => $stay->expected_check_out_at->toDateTimeString(),
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('Corrected Guest', $stay->fresh()->guest_name);
+        $this->delete(route('stays.destroy', $stay))->assertRedirect(route('stays.index'));
+        $this->assertSoftDeleted('stays', ['id' => $stay->id]);
+        $this->get(route('stays.index'))->assertDontSee('Corrected Guest');
+        $this->get(route('stays.index', ['status' => 'archived']))->assertOk()->assertSee('Corrected Guest');
+        $this->get(route('stays.show', $stay))->assertOk()->assertSee('Archive');
+        $this->get(route('stays.identity.show', [$stay, $document]))->assertOk();
+        Storage::disk('local')->assertExists($document->path);
+        $this->delete(route('rooms.destroy', $this->room))->assertSessionHasNoErrors();
+        $this->get(route('stays.show', $stay))->assertOk()->assertSee('101');
+        $this->get(route('reports.monthly', ['month' => now()->format('Y-m')]))->assertOk()->assertViewHas('income', 35000);
+        $this->get(route('reports.daily', ['date' => today()->toDateString()]))->assertOk()->assertViewHas('payments', fn ($payments) => $payments->sum('amount') === 35000);
+        $this->post(route('stays.restore', $stay))->assertSessionHasNoErrors();
+        $this->post(route('rooms.restore', $this->room))->assertSessionHasNoErrors();
+        $this->assertSame(1, Stay::count());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'stay.archived']);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'stay.restored']);
+    }
+
     public function test_negative_fractional_and_invalid_payments_are_rejected(): void
     {
         $stay = $this->checkIn();
@@ -374,5 +433,37 @@ class MotelWorkflowTest extends TestCase
         $this->staff->update(['role' => 'manager']);
         $this->get(route('reports.monthly', ['month' => '2026-10']))->assertViewHas('income', 10000);
         $this->get(route('reports.monthly', ['month' => '2026-11']))->assertViewHas('income', 25000);
+    }
+
+    public function test_room_list_filters_by_floor_and_status_together(): void
+    {
+        $otherFloor = Floor::create(['number' => 2]);
+        Room::create(['number' => '201', 'floor_id' => $otherFloor->id, 'room_type_id' => $this->room->room_type_id, 'rate' => 40000]);
+        Room::create(['number' => '202', 'floor_id' => $otherFloor->id, 'room_type_id' => $this->room->room_type_id, 'rate' => 40000, 'status' => 'dirty']);
+
+        $this->actingAs($this->staff)->get(route('rooms.index', ['floor_id' => $otherFloor->id, 'status' => 'dirty']))
+            ->assertOk()->assertViewHas('rooms', fn ($rooms) => $rooms->pluck('number')->all() === ['202']);
+        $this->get(route('rooms.index', ['floor_id' => 999999]))->assertSessionHasErrors('floor_id');
+        $this->get(route('rooms.index', ['status' => 'invalid']))->assertSessionHasErrors('status');
+    }
+
+    public function test_dashboard_lists_newest_active_check_in_first(): void
+    {
+        $older = $this->checkIn(['guest_name' => 'Older Guest', 'check_in_at' => now()->subHours(2)->toDateTimeString()]);
+        $secondRoom = Room::create(['number' => '102', 'floor_id' => $this->room->floor_id, 'room_type_id' => $this->room->room_type_id, 'rate' => 35000, 'status' => 'occupied']);
+        Stay::create(['room_id' => $secondRoom->id, 'active_room_id' => $secondRoom->id, 'guest_name' => 'Newest Guest', 'phone' => '09999999999', 'check_in_at' => now()->subMinute(), 'expected_check_out_at' => now()->addDay(), 'room_charge' => 35000, 'created_by' => $this->staff->id]);
+
+        $this->get(route('dashboard'))->assertOk()->assertViewHas('activeStays', fn ($stays) => $stays->pluck('guest_name')->all() === ['Newest Guest', 'Older Guest']);
+        $this->assertNotNull($older->id);
+    }
+
+    public function test_language_switch_defaults_to_myanmar_and_persists_english(): void
+    {
+        $this->actingAs($this->staff)->get(route('dashboard'))->assertOk()->assertSee('<html lang="my">', false);
+        $this->post(route('locale.update'), ['locale' => 'en'])->assertSessionHas('locale', 'en');
+        $this->get(route('dashboard'))->assertOk()->assertSee('<html lang="en">', false)->assertSee('Current guests');
+        $this->get(route('rooms.index'))->assertOk()->assertSee('All floors');
+        $this->post(route('locale.update'), ['locale' => 'fr'])->assertSessionHasErrors('locale');
+        $this->get(route('dashboard'))->assertSee('<html lang="en">', false);
     }
 }

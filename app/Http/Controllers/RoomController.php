@@ -10,14 +10,25 @@ use App\Services\FrontDesk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class RoomController extends Controller
 {
     public function index(Request $request)
     {
-        $data = $request->validate(['status' => ['nullable', Rule::in(array_keys(Room::STATUSES))]]);
+        $data = $request->validate([
+            'status' => ['nullable', Rule::in([...array_keys(Room::STATUSES), 'archived'])],
+            'floor_id' => ['nullable', 'integer', Rule::exists('floors', 'id')],
+        ]);
+        $status = $data['status'] ?? null;
+        $floorId = $data['floor_id'] ?? null;
+        if ($status === 'archived' && ! $request->user()->isManager()) {
+            abort(403);
+        }
         $rooms = Room::with(['activeStay', 'floor', 'roomType'])
-            ->when($data['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
+            ->when($status === 'archived', fn ($q) => $q->onlyTrashed())
+            ->when($status && $status !== 'archived', fn ($q) => $q->where('status', $status))
+            ->when($floorId, fn ($q) => $q->where('rooms.floor_id', $floorId))
             ->join('floors', 'floors.id', '=', 'rooms.floor_id')
             ->orderBy('floors.number')->orderBy('rooms.number')->select('rooms.*')->get();
         $floors = Floor::orderBy('number')->get();
@@ -34,7 +45,7 @@ class RoomController extends Controller
             Audit::record('floor.created', $floor, null, $floor->toArray());
         });
 
-        return back()->with('success', 'အထပ်အသစ် ထည့်ပြီးပါပြီ။');
+        return back()->with('success', __('အထပ်အသစ် ထည့်ပြီးပါပြီ။'));
     }
 
     public function storeRoomType(Request $request)
@@ -45,7 +56,7 @@ class RoomController extends Controller
             Audit::record('room_type.created', $roomType, null, $roomType->toArray());
         });
 
-        return back()->with('success', 'အခန်းအမျိုးအစား ထည့်ပြီးပါပြီ။');
+        return back()->with('success', __('အခန်းအမျိုးအစား ထည့်ပြီးပါပြီ။'));
     }
 
     public function store(Request $request)
@@ -56,7 +67,7 @@ class RoomController extends Controller
             Audit::record('room.created', $room, null, $room->toArray());
         });
 
-        return back()->with('success', 'အခန်းအသစ် ထည့်ပြီးပါပြီ။');
+        return back()->with('success', __('အခန်းအသစ် ထည့်ပြီးပါပြီ။'));
     }
 
     public function edit(Room $room)
@@ -65,6 +76,14 @@ class RoomController extends Controller
         $roomTypes = RoomType::orderBy('name')->get();
 
         return view('rooms.edit', compact('room', 'floors', 'roomTypes'));
+    }
+
+    public function show(Room $room)
+    {
+        $room->load(['floor', 'roomType']);
+        $stays = $room->stays()->withTrashed()->latest('check_in_at')->get();
+
+        return view('rooms.show', compact('room', 'stays'));
     }
 
     public function update(Request $request, Room $room)
@@ -77,7 +96,7 @@ class RoomController extends Controller
             Audit::record('room.updated', $locked, $before, $locked->toArray());
         });
 
-        return redirect()->route('rooms.index')->with('success', 'အခန်းအချက်အလက် ပြင်ပြီးပါပြီ။');
+        return redirect()->route('rooms.index')->with('success', __('အခန်းအချက်အလက် ပြင်ပြီးပါပြီ။'));
     }
 
     public function status(Request $request, Room $room, FrontDesk $desk)
@@ -85,7 +104,35 @@ class RoomController extends Controller
         $data = $request->validate(['status' => ['required', Rule::in(['available', 'dirty', 'maintenance'])]]);
         $desk->roomStatus($room, $data['status']);
 
-        return back()->with('success', 'အခန်းအခြေအနေ ပြောင်းပြီးပါပြီ။');
+        return back()->with('success', __('အခန်းအခြေအနေ ပြောင်းပြီးပါပြီ။'));
+    }
+
+    public function destroy(Room $room)
+    {
+        DB::transaction(function () use ($room): void {
+            $locked = Room::lockForUpdate()->findOrFail($room->id);
+            if ($locked->status === 'occupied' || $locked->activeStay()->exists()) {
+                throw ValidationException::withMessages(['operation' => __('ဧည့်သည်ရှိနေသောအခန်းကို ဖျက်၍မရပါ။ Check-out အရင်လုပ်ပါ။')]);
+            }
+            $before = $locked->toArray();
+            $locked->delete();
+            Audit::record('room.archived', $locked, $before, $locked->toArray());
+        });
+
+        return redirect()->route('rooms.index')->with('success', __('အခန်းကို archive ထဲရွှေ့ပြီးပါပြီ။ ပြန်ယူနိုင်ပါသည်။'));
+    }
+
+    public function restore(Room $room)
+    {
+        abort_unless($room->trashed(), 404);
+        DB::transaction(function () use ($room): void {
+            $locked = Room::withTrashed()->lockForUpdate()->findOrFail($room->id);
+            $before = $locked->toArray();
+            $locked->restore();
+            Audit::record('room.restored', $locked, $before, $locked->toArray());
+        });
+
+        return redirect()->route('rooms.index', ['status' => 'archived'])->with('success', __('အခန်းကို ပြန်ယူပြီးပါပြီ။'));
     }
 
     private function roomRules(?Room $room = null): array

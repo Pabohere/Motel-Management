@@ -65,8 +65,8 @@ class MonthlyReportController extends Controller
         return [
             'month' => $month, 'payments' => $payments, 'expenses' => $expenses,
             'income' => $income, 'outgoings' => $outgoings, 'net' => $income - $outgoings,
-            'checkIns' => Stay::where('check_in_at', '>=', $start)->where('check_in_at', '<', $end)->count(),
-            'checkOuts' => Stay::where('check_out_at', '>=', $start)->where('check_out_at', '<', $end)->count(),
+            'checkIns' => Stay::withTrashed()->where('check_in_at', '>=', $start)->where('check_in_at', '<', $end)->count(),
+            'checkOuts' => Stay::withTrashed()->where('check_out_at', '>=', $start)->where('check_out_at', '<', $end)->count(),
             'categories' => self::CATEGORIES,
         ];
     }
