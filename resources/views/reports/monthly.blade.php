@@ -7,7 +7,7 @@
         <h1>{{ __('လစဉ် ဝင်ငွေ / ထွက်ငွေ') }}</h1>
         <p class="muted">{{ __('ဝင်ငွေမှာ လက်ခံရရှိသည့်ရက်၊ ထွက်ငွေမှာ သုံးစွဲသည့်ရက်အလိုက် ဖြစ်သည်။ · Asia/Yangon') }}</p>
     </div>
-    <form class="filters report-actions" method="get" action="{{ route('reports.monthly') }}">
+    <form class="filters report-actions" method="get" action="{{ route('reports.monthly') }}" data-auto-filter>
         <input type="month" name="month" value="{{ $month }}" aria-label="{{ __('လရွေးရန်') }}" required>
         <button class="btn secondary">{{ __('ကြည့်မည်') }}</button>
         <a class="btn secondary" href="{{ route('reports.monthly.export', ['month' => $month]) }}">CSV Download</a>

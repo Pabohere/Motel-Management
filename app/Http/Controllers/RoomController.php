@@ -32,9 +32,15 @@ class RoomController extends Controller
             ->join('floors', 'floors.id', '=', 'rooms.floor_id')
             ->orderBy('floors.number')->orderBy('rooms.number')->select('rooms.*')->get();
         $floors = Floor::orderBy('number')->get();
+        if ($request->routeIs('rooms.all')) {
+            return view('rooms.all', compact('rooms', 'floors'));
+        }
+
+        $totalRooms = $rooms->count();
+        $rooms = $rooms->take(9);
         $roomTypes = RoomType::orderBy('name')->get();
 
-        return view('rooms.index', compact('rooms', 'floors', 'roomTypes'));
+        return view('rooms.index', compact('rooms', 'floors', 'roomTypes', 'totalRooms'));
     }
 
     public function storeFloor(Request $request)
@@ -60,6 +66,21 @@ class RoomController extends Controller
         return back()->with('success', __('အထပ်နံပါတ် ပြင်ပြီးပါပြီ။'));
     }
 
+    public function destroyFloor(Floor $floor)
+    {
+        DB::transaction(function () use ($floor): void {
+            $locked = Floor::lockForUpdate()->findOrFail($floor->id);
+            if (Room::withTrashed()->where('floor_id', $locked->id)->exists()) {
+                throw ValidationException::withMessages(['operation' => __('အခန်းရှိနေသောအထပ်ကို ဖျက်၍မရပါ။ အခန်းများကို အခြားအထပ်သို့ ရွှေ့ပါ။')]);
+            }
+            $before = $locked->toArray();
+            $locked->delete();
+            Audit::record('floor.deleted', $locked, $before);
+        });
+
+        return back()->with('success', __('အထပ်ကို ဖျက်ပြီးပါပြီ။'));
+    }
+
     public function storeRoomType(Request $request)
     {
         $data = $request->validate(['name' => ['required', 'string', 'max:80', 'unique:room_types,name']]);
@@ -81,6 +102,21 @@ class RoomController extends Controller
         });
 
         return back()->with('success', __('အခန်းအမျိုးအစား ပြင်ပြီးပါပြီ။'));
+    }
+
+    public function destroyRoomType(RoomType $roomType)
+    {
+        DB::transaction(function () use ($roomType): void {
+            $locked = RoomType::lockForUpdate()->findOrFail($roomType->id);
+            if (Room::withTrashed()->where('room_type_id', $locked->id)->exists()) {
+                throw ValidationException::withMessages(['operation' => __('အသုံးပြုနေသောအခန်းအမျိုးအစားကို ဖျက်၍မရပါ။ အခန်းများကို အခြားအမျိုးအစားသို့ ပြောင်းပါ။')]);
+            }
+            $before = $locked->toArray();
+            $locked->delete();
+            Audit::record('room_type.deleted', $locked, $before);
+        });
+
+        return back()->with('success', __('အခန်းအမျိုးအစားကို ဖျက်ပြီးပါပြီ။'));
     }
 
     public function store(Request $request)

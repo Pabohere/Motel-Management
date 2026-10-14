@@ -484,6 +484,32 @@ class MotelWorkflowTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'room_type.updated']);
     }
 
+    public function test_manager_can_delete_unused_catalog_items_but_not_items_linked_to_archived_rooms(): void
+    {
+        $floor = Floor::create(['number' => 9]);
+        $roomType = RoomType::create(['name' => 'Studio']);
+        $this->actingAs($this->staff);
+        $this->delete(route('floors.destroy', $floor))->assertForbidden();
+        $this->delete(route('room-types.destroy', $roomType))->assertForbidden();
+
+        $this->staff->update(['role' => 'manager']);
+        $this->get(route('rooms.index'))->assertOk()
+            ->assertSee(route('floors.destroy', $floor), false)
+            ->assertSee(route('room-types.destroy', $roomType), false);
+        $this->delete(route('floors.destroy', $floor))->assertSessionHasNoErrors();
+        $this->delete(route('room-types.destroy', $roomType))->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('floors', ['id' => $floor->id]);
+        $this->assertDatabaseMissing('room_types', ['id' => $roomType->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'floor.deleted', 'subject_id' => $floor->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'room_type.deleted', 'subject_id' => $roomType->id]);
+
+        $this->room->delete();
+        $this->delete(route('floors.destroy', $this->room->floor))->assertSessionHasErrors('operation');
+        $this->delete(route('room-types.destroy', $this->room->roomType))->assertSessionHasErrors('operation');
+        $this->assertDatabaseHas('floors', ['id' => $this->room->floor_id]);
+        $this->assertDatabaseHas('room_types', ['id' => $this->room->room_type_id]);
+    }
+
     public function test_reservation_blocks_overlaps_and_converts_to_a_stay_on_check_in(): void
     {
         $this->actingAs($this->staff);
@@ -505,6 +531,23 @@ class MotelWorkflowTest extends TestCase
         $this->assertSame('occupied', $this->room->fresh()->status);
         $this->assertSame('booking', $reservation->stay->source);
         $this->post(route('reservations.check-in', $reservation))->assertSessionHasErrors('operation');
+    }
+
+    public function test_rooms_preview_is_limited_to_three_rows_and_all_rooms_remain_accessible(): void
+    {
+        $this->actingAs($this->staff);
+        foreach (range(102, 110) as $number) {
+            Room::create(['number' => (string) $number, 'floor_id' => $this->room->floor_id,
+                'room_type_id' => $this->room->room_type_id, 'rate' => 35000]);
+        }
+
+        $this->get(route('rooms.index'))->assertOk()
+            ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 9)
+            ->assertSee(route('rooms.all'), false);
+        $this->get(route('rooms.all'))->assertOk()
+            ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 10);
+        $this->get(route('rooms.all', ['status' => 'available']))->assertOk()
+            ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 10);
     }
 
     public function test_cancelling_a_booking_releases_its_time_slot(): void

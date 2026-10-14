@@ -80,18 +80,72 @@ document.getElementById('guest-sort')?.addEventListener('change', event => {
   guestRows.forEach(row => body.insertBefore(row, emptyRow));
 });
 
-document.querySelectorAll('[data-row-link]').forEach(row => {
-  row.addEventListener('click', event => {
-    if (!event.target.closest('a, button, input, select, textarea, form, label')) {
-      window.location.assign(row.dataset.rowLink);
-    }
+function bindRowLinks(scope = document) {
+  scope.querySelectorAll('[data-row-link]').forEach(row => {
+    row.addEventListener('click', event => {
+      if (!event.target.closest('a, button, input, select, textarea, form, label')) {
+        window.location.assign(row.dataset.rowLink);
+      }
+    });
+    row.addEventListener('keydown', event => {
+      if (event.target === row && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        window.location.assign(row.dataset.rowLink);
+      }
+    });
   });
-  row.addEventListener('keydown', event => {
-    if (event.target === row && (event.key === 'Enter' || event.key === ' ')) {
-      event.preventDefault();
-      window.location.assign(row.dataset.rowLink);
-    }
+}
+bindRowLinks();
+
+// GET filters update on selection. Text searches fetch the matching page without
+// taking focus from the field or hiding results on later pagination pages.
+document.querySelectorAll('form[data-auto-filter]').forEach(form => {
+  form.querySelectorAll('select, input[type="month"]').forEach(control => {
+    control.addEventListener('change', () => {
+      if (form.reportValidity()) form.requestSubmit();
+    });
   });
+});
+document.querySelectorAll('form[data-live-filter]').forEach(form => {
+  const results = document.getElementById(form.dataset.resultsTarget);
+  if (!results) return;
+  let timer;
+  let activeRequest;
+  const refresh = async () => {
+    activeRequest?.abort();
+    const requestController = new AbortController();
+    activeRequest = requestController;
+    const url = new URL(form.action, window.location.href);
+    const params = new URLSearchParams(new FormData(form));
+    params.delete('page');
+    url.search = params.toString();
+    results.setAttribute('aria-busy', 'true');
+    try {
+      const response = await fetch(url, {signal: requestController.signal, headers: {'X-Requested-With': 'XMLHttpRequest'}});
+      if (!response.ok || response.redirected) throw new Error('Search unavailable');
+      const documentNext = new DOMParser().parseFromString(await response.text(), 'text/html');
+      const nextResults = documentNext.getElementById(form.dataset.resultsTarget);
+      if (!nextResults) throw new Error('Search results missing');
+      if (requestController.signal.aborted) return;
+      results.innerHTML = nextResults.innerHTML;
+      bindRowLinks(results);
+      history.replaceState(null, '', url);
+    } catch (error) {
+      if (error.name !== 'AbortError') form.requestSubmit();
+    } finally {
+      if (!requestController.signal.aborted) results.removeAttribute('aria-busy');
+    }
+  };
+  form.querySelectorAll('input[name="q"]').forEach(input => {
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(refresh, 260);
+    });
+  });
+  form.querySelectorAll('select').forEach(select => select.addEventListener('change', () => {
+    clearTimeout(timer);
+    refresh();
+  }));
 });
 
 document.querySelectorAll('input[data-max-files]').forEach(input => {

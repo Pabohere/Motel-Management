@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', __('နေ့စဉ်စာရင်း'))
 @section('content')
-<div class="page-heading report-heading"><div><span class="eyebrow">DAILY REPORT · {{ $date }}</span><h1>{{ __('နေ့စဉ်အနှစ်ချုပ်') }}</h1><p class="muted">{{ __('Yangon အချိန်ဖြင့် တွက်ထားသည်') }}</p></div><form class="filters report-actions" method="get"><input type="date" name="date" value="{{ $date }}" max="{{ today()->toDateString() }}" aria-label="{{ __('ရက်စွဲ') }}" required><button class="btn secondary">{{ __('ကြည့်မည်') }}</button><button class="btn secondary" type="button" onclick="window.print()">Print / PDF</button></form></div>
+<div class="page-heading report-heading"><div><span class="eyebrow">DAILY REPORT · {{ $date }}</span><h1>{{ __('နေ့စဉ်အနှစ်ချုပ်') }}</h1><p class="muted">{{ __('Yangon အချိန်ဖြင့် တွက်ထားသည်') }}</p></div><form class="filters report-actions" method="get" data-auto-filter><input type="date" name="date" value="{{ $date }}" max="{{ today()->toDateString() }}" aria-label="{{ __('ရက်စွဲ') }}" required><button class="btn secondary">{{ __('ကြည့်မည်') }}</button><button class="btn secondary" type="button" onclick="window.print()">Print / PDF</button></form></div>
 <div class="stats report-stats">
     <div class="stat"><span>{{ __('ဧည့်သည်ဝင်') }}</span><strong>{{ $checkIns->count() }}<small> {{ __('ဦး') }}</small></strong></div>
     <div class="stat"><span>{{ __('ဧည့်သည်ထွက်') }}</span><strong>{{ $checkOuts->count() }}<small> {{ __('ဦး') }}</small></strong></div>

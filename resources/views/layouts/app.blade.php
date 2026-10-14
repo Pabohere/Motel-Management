@@ -14,7 +14,7 @@
         <p class="nav-label">{{ __('လုပ်ငန်းဆောင်ရွက်မှု') }}</p>
         <nav>
             @foreach(['dashboard'=>['အနှစ်ချုပ်','grid'],'rooms.index'=>['အခန်းများ','home'],'stays.index'=>['ဧည့်သည်စာရင်း','users'],'reservations.index'=>['Booking စာရင်း','calendar'],'reports.daily'=>['နေ့စဉ်စာရင်း','calendar']] as $route => $item)
-                <a class="{{ request()->routeIs($route) ? 'active' : '' }}" href="{{ route($route) }}">@include('icon', ['name'=>$item[1]]){{ __($item[0]) }}</a>
+                <a class="{{ request()->routeIs($route) || ($route === 'rooms.index' && request()->routeIs('rooms.all')) ? 'active' : '' }}" href="{{ route($route) }}">@include('icon', ['name'=>$item[1]]){{ __($item[0]) }}</a>
             @endforeach
             @if(auth()->user()->isManager())
                 <p class="nav-label">{{ __('စီမံခန့်ခွဲမှု') }}</p>

@@ -2,7 +2,7 @@
 @section('title', __('ဧည့်သည်စာရင်း'))
 @section('content')
 <div class="page-heading"><div><h1>{{ __('ဧည့်သည်စာရင်း') }}</h1><p class="muted">{{ __('တည်းခိုမှုနဲ့ ငွေစာရင်း မှတ်တမ်းများ') }}</p></div><a class="btn" href="{{ route('stays.create') }}">{{ __('+ ဧည့်သည် Check-in') }}</a></div>
-<form class="filters" method="get">
+<form class="filters" method="get" action="{{ route('stays.index') }}" data-live-filter data-results-target="stay-results">
     <input name="q" value="{{ request('q') }}" maxlength="100" placeholder="{{ __('အမည် / ဖုန်းနံပါတ်ဖြင့် ရှာရန်') }}" aria-label="{{ __('ဧည့်သည်ရှာရန်') }}">
     <select name="status" aria-label="{{ __('တည်းခိုမှုအခြေအနေ') }}">
         <option value="">{{ __('အားလုံး') }}</option>
@@ -11,9 +11,9 @@
         @if(auth()->user()->isManager())<option value="archived" @selected(request('status') === 'archived')>Archive</option>@endif
     </select>
     <select name="source" aria-label="{{ __('Walk-in / Booking') }}"><option value="">{{ __('Walk-in / Booking အားလုံး') }}</option><option value="walk_in" @selected(request('source') === 'walk_in')>Walk-in</option><option value="booking" @selected(request('source') === 'booking')>Booking</option></select>
-    <button class="btn secondary">{{ __('ရှာမည်') }}</button><a href="{{ route('stays.index') }}">{{ __('ပြန်စမည်') }}</a>
+    <div class="filter-actions"><button class="btn secondary">{{ __('ရှာမည်') }}</button><a class="filter-reset" href="{{ route('stays.index') }}">{{ __('ပြန်စမည်') }}</a></div>
 </form>
-<div class="panel table-panel"><div class="monthly-table-scroll"><table>
+<div id="stay-results"><div class="panel table-panel"><div class="monthly-table-scroll"><table class="stay-table">
     <thead><tr><th>{{ __('ဧည့်သည်') }}</th><th>{{ __('အရင်းအမြစ်') }}</th><th>{{ __('ကျား / မ') }}</th><th>{{ __('အခန်း') }}</th><th>{{ __('အထောက်အထား') }}</th><th>{{ __('ဝင်ချိန်') }}</th><th>{{ __('ထွက်ချိန် / ထွက်ရန်') }}</th><th>{{ __('အခြေအနေ') }}</th><th>{{ __('ကျန်ငွေ') }}</th></tr></thead>
     <tbody>
     @forelse($stays as $stay)
@@ -39,4 +39,5 @@
     </tbody>
 </table></div></div>
 <div class="pagination">{{ $stays->links('pagination') }}</div>
+</div>
 @endsection

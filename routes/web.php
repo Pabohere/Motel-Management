@@ -32,6 +32,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/password', [AuthController::class, 'password'])->name('password.edit');
     Route::put('/password', [AuthController::class, 'updatePassword'])->name('password.update');
     Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
+    Route::get('/rooms/all', [RoomController::class, 'index'])->name('rooms.all');
     Route::get('/rooms/{room}', [RoomController::class, 'show'])->withTrashed()->name('rooms.show');
     Route::patch('/rooms/{room}/status', [RoomController::class, 'status'])->name('rooms.status');
     Route::get('/stays', [StayController::class, 'index'])->name('stays.index');
@@ -61,8 +62,10 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/rooms', [RoomController::class, 'store'])->name('rooms.store');
         Route::post('/floors', [RoomController::class, 'storeFloor'])->name('floors.store');
         Route::put('/floors/{floor}', [RoomController::class, 'updateFloor'])->name('floors.update');
+        Route::delete('/floors/{floor}', [RoomController::class, 'destroyFloor'])->name('floors.destroy');
         Route::post('/room-types', [RoomController::class, 'storeRoomType'])->name('room-types.store');
         Route::put('/room-types/{roomType}', [RoomController::class, 'updateRoomType'])->name('room-types.update');
+        Route::delete('/room-types/{roomType}', [RoomController::class, 'destroyRoomType'])->name('room-types.destroy');
         Route::get('/rooms/{room}/edit', [RoomController::class, 'edit'])->name('rooms.edit');
         Route::put('/rooms/{room}', [RoomController::class, 'update'])->name('rooms.update');
         Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])->name('rooms.destroy');
