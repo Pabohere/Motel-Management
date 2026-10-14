@@ -106,6 +106,35 @@ document.querySelectorAll('input[data-max-files]').forEach(input => {
   });
 });
 
+document.querySelectorAll('[data-payment-method]').forEach(select => {
+  const form = select.closest('form');
+  const receipt = form?.querySelector('[data-receipt-field]');
+  if (!receipt) return;
+  const amount = form.querySelector('input[name="deposit"], input[name="amount"]');
+  const refresh = () => {
+    receipt.hidden = select.value !== 'transfer' || Number(amount?.value) <= 0;
+    if (receipt.hidden) receipt.querySelector('input').value = '';
+  };
+  select.addEventListener('change', refresh);
+  amount?.addEventListener('input', refresh);
+  refresh();
+});
+
+document.querySelectorAll('[data-theme-toggle]').forEach(button => {
+  const refresh = () => {
+    const dark = document.documentElement.dataset.theme === 'dark';
+    button.setAttribute('aria-pressed', String(dark));
+    button.querySelector('span').textContent = dark ? button.dataset.labelLight : button.dataset.labelDark;
+  };
+  button.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('motel-theme', next); } catch (_) { /* Keep the current page theme. */ }
+    refresh();
+  });
+  refresh();
+});
+
 const identityDialog = document.getElementById('identity-preview-dialog');
 if (identityDialog && typeof identityDialog.showModal === 'function') {
   const image = identityDialog.querySelector('img');

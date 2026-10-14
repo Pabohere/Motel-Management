@@ -25,7 +25,7 @@ class RoomController extends Controller
         if ($status === 'archived' && ! $request->user()->isManager()) {
             abort(403);
         }
-        $rooms = Room::with(['activeStay', 'floor', 'roomType'])
+        $rooms = Room::with(['activeStay', 'floor', 'roomType', 'nextReservation'])
             ->when($status === 'archived', fn ($q) => $q->onlyTrashed())
             ->when($status && $status !== 'archived', fn ($q) => $q->where('status', $status))
             ->when($floorId, fn ($q) => $q->where('rooms.floor_id', $floorId))
@@ -48,6 +48,18 @@ class RoomController extends Controller
         return back()->with('success', __('အထပ်အသစ် ထည့်ပြီးပါပြီ။'));
     }
 
+    public function updateFloor(Request $request, Floor $floor)
+    {
+        $data = $request->validate(['number' => ['required', 'integer', 'between:1,99', Rule::unique('floors', 'number')->ignore($floor->id)]]);
+        DB::transaction(function () use ($floor, $data): void {
+            $before = $floor->toArray();
+            $floor->update($data);
+            Audit::record('floor.updated', $floor, $before, $floor->toArray());
+        });
+
+        return back()->with('success', __('အထပ်နံပါတ် ပြင်ပြီးပါပြီ။'));
+    }
+
     public function storeRoomType(Request $request)
     {
         $data = $request->validate(['name' => ['required', 'string', 'max:80', 'unique:room_types,name']]);
@@ -57,6 +69,18 @@ class RoomController extends Controller
         });
 
         return back()->with('success', __('အခန်းအမျိုးအစား ထည့်ပြီးပါပြီ။'));
+    }
+
+    public function updateRoomType(Request $request, RoomType $roomType)
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:80', Rule::unique('room_types', 'name')->ignore($roomType->id)]]);
+        DB::transaction(function () use ($roomType, $data): void {
+            $before = $roomType->toArray();
+            $roomType->update($data);
+            Audit::record('room_type.updated', $roomType, $before, $roomType->toArray());
+        });
+
+        return back()->with('success', __('အခန်းအမျိုးအစား ပြင်ပြီးပါပြီ။'));
     }
 
     public function store(Request $request)
@@ -113,6 +137,9 @@ class RoomController extends Controller
             $locked = Room::lockForUpdate()->findOrFail($room->id);
             if ($locked->status === 'occupied' || $locked->activeStay()->exists()) {
                 throw ValidationException::withMessages(['operation' => __('ဧည့်သည်ရှိနေသောအခန်းကို ဖျက်၍မရပါ။ Check-out အရင်လုပ်ပါ။')]);
+            }
+            if ($locked->reservations()->where('status', 'booked')->exists()) {
+                throw ValidationException::withMessages(['operation' => __('ကြိုတင် Booking ရှိသောအခန်းကို archive ထဲရွှေ့၍မရပါ။')]);
             }
             $before = $locked->toArray();
             $locked->delete();

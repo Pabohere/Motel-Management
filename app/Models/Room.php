@@ -39,4 +39,14 @@ class Room extends Model
     {
         return $this->hasOne(Stay::class, 'active_room_id');
     }
+
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
+    public function nextReservation()
+    {
+        return $this->hasOne(Reservation::class)->where('status', 'booked')->oldestOfMany('arrival_at');
+    }
 }

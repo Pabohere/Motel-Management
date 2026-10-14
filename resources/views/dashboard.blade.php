@@ -25,9 +25,9 @@
                     @foreach($floorRooms as $room)
                         <a class="room-tile {{ $room->status }}" data-room-status="{{ $room->status }}"
                            href="{{ $room->activeStay ? route('stays.show', $room->activeStay) : ($room->status === 'available' ? route('stays.create', ['room'=>$room->id]) : route('rooms.index', ['status'=>$room->status])) }}"
-                           title="{{ __('အထပ်') }} {{ $floor }} · {{ __('အခန်း') }} {{ $room->number }} · {{ __(\App\Models\Room::STATUSES[$room->status]) }}{{ $room->activeStay ? ' · '.$room->activeStay->guest_name : '' }}"
+                           title="{{ __('အထပ်') }} {{ $floor }} · {{ __('အခန်း') }} {{ $room->number }} · {{ __(\App\Models\Room::STATUSES[$room->status]) }}{{ $room->activeStay ? ' · '.$room->activeStay->guest_name : '' }}{{ $room->nextReservation ? ' · Booking '.$room->nextReservation->arrival_at->format('d M H:i') : '' }}"
                            aria-label="{{ __('အထပ်') }} {{ $floor }}၊ {{ __('အခန်း') }} {{ $room->number }}၊ {{ __(\App\Models\Room::STATUSES[$room->status]) }}">
-                            <span class="tile-indicator"></span><strong>{{ $room->number }}</strong><small>{{ $room->roomType->name }}</small>
+                            <span class="tile-indicator"></span><strong>{{ $room->number }}</strong><small>{{ $room->roomType->name }}</small>@if($room->nextReservation)<small class="tile-booked">{{ __('Booking') }} · {{ $room->nextReservation->arrival_at->format('d M') }}</small>@endif
                         </a>
                     @endforeach
                     </div>
@@ -36,7 +36,7 @@
                 <p class="map-empty" id="room-map-empty" hidden>{{ __('ရွေးထားသော အထပ်နှင့်အခြေအနေအတွက် အခန်းမရှိပါ။') }}</p>
             </div>
             <div class="map-legend">@foreach(\App\Models\Room::STATUSES as $status=>$label)<span><i class="legend-dot {{ $status }}"></i>{{ __($label) }} <b>{{ $counts[$status] ?? 0 }}</b></span>@endforeach</div>
-            <div class="map-footnote"><span>{{ __('အခန်းကိုနှိပ်ပြီး ဧည့်သည်ကြည့် / Check-in လုပ်နိုင်ပါတယ်။') }}</span><a href="{{ route('rooms.index') }}">{{ __('အခန်းများ') }}</a></div>
+            <div class="map-footnote"><span>{{ __('အခန်းကိုနှိပ်ပြီး ဧည့်သည်ကြည့် / Check-in လုပ်နိုင်ပါတယ်။') }}</span><div class="record-actions"><a href="{{ route('reservations.index') }}">{{ __('Booking စာရင်း') }}</a><a href="{{ route('rooms.index') }}">{{ __('အခန်းများ') }}</a></div></div>
         </div>
     </section>
     <section class="glass-panel summary-panel" aria-labelledby="summary-heading">

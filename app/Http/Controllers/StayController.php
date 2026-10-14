@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Payment;
 use App\Models\Room;
 use App\Models\Stay;
 use App\Models\StayIdentityDocument;
@@ -20,13 +21,14 @@ class StayController extends Controller
 {
     public function index(Request $request)
     {
-        $data = $request->validate(['q' => 'nullable|string|max:100', 'status' => ['nullable', Rule::in(['active', 'completed', 'archived'])]]);
+        $data = $request->validate(['q' => 'nullable|string|max:100', 'status' => ['nullable', Rule::in(['active', 'completed', 'archived'])], 'source' => ['nullable', Rule::in(['walk_in', 'booking'])]]);
         if (($data['status'] ?? null) === 'archived' && ! $request->user()->isManager()) {
             abort(403);
         }
         $stays = Stay::with(['room', 'charges', 'payments', 'identityDocuments'])
             ->when(($data['status'] ?? '') === 'archived', fn ($q) => $q->onlyTrashed())
             ->when($data['q'] ?? null, fn ($q, $term) => $q->where(fn ($q) => $q->where('guest_name', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%')))
+            ->when($data['source'] ?? null, fn ($q, $source) => $q->where('source', $source))
             ->when(($data['status'] ?? '') === 'active', fn ($q) => $q->whereNull('check_out_at'))
             ->when(($data['status'] ?? '') === 'completed', fn ($q) => $q->whereNotNull('check_out_at'))
             ->latest('check_in_at')->paginate(20)->withQueryString();
@@ -49,15 +51,27 @@ class StayController extends Controller
             'check_in_at' => 'required|date|before_or_equal:now', 'expected_check_out_at' => 'required|date|after:check_in_at|after:now',
             'room_charge' => 'required|integer|min:0|max:100000000', 'deposit' => 'required|integer|min:0|lte:room_charge',
             'method' => ['required', Rule::in(['cash', 'transfer', 'card'])],
+            'payment_term' => ['nullable', Rule::in(['immediate', 'credit'])],
+            'payment_receipt' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             'identity_documents' => 'nullable|array|max:5',
             'identity_documents.*' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
         ]);
-        $paths = $this->storeIdentityFiles($request);
-        unset($data['identity_documents']);
+        if (($data['payment_term'] ?? null) === 'immediate' && (int) $data['deposit'] !== (int) $data['room_charge']) {
+            throw ValidationException::withMessages(['deposit' => __('လက်ငင်းပေးချေမှုအတွက် အခန်းခအပြည့်ပေးပါ။')]);
+        }
+        $paths = [];
+        $receiptPath = null;
         try {
+            $paths = $this->storeIdentityFiles($request);
+            $receiptPath = $this->storeReceipt($request, (int) $data['deposit'], $data['method']);
+            unset($data['identity_documents'], $data['payment_receipt']);
+            $data['receipt_path'] = $receiptPath;
             $stay = $desk->checkIn($data, $paths);
         } catch (Throwable $exception) {
             Storage::disk('local')->delete($paths);
+            if ($receiptPath) {
+                Storage::disk('local')->delete($receiptPath);
+            }
             throw $exception;
         }
 
@@ -177,6 +191,19 @@ class StayController extends Controller
         ], 'inline');
     }
 
+    public function paymentReceipt(Stay $stay, Payment $payment): StreamedResponse
+    {
+        abort_unless($payment->stay_id === $stay->id && $payment->receipt_path && Storage::disk('local')->exists($payment->receipt_path), 404);
+        $extension = strtolower(pathinfo($payment->receipt_path, PATHINFO_EXTENSION));
+        $mime = match ($extension) {
+            'jpg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', default => abort(404),
+        };
+
+        return Storage::disk('local')->response($payment->receipt_path, 'receipt-'.$payment->id.'.'.$extension, [
+            'Content-Type' => $mime, 'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store',
+        ], 'inline');
+    }
+
     private function storeIdentityFiles(Request $request): array
     {
         $paths = [];
@@ -196,10 +223,35 @@ class StayController extends Controller
         return $paths;
     }
 
+    private function storeReceipt(Request $request, int $amount, string $method): ?string
+    {
+        if (! $request->hasFile('payment_receipt')) {
+            return null;
+        }
+        if ($method !== 'transfer' || $amount === 0) {
+            throw ValidationException::withMessages(['payment_receipt' => __('ငွေလွှဲပြီးသော ပေးငွေအတွက်သာ ပြေစာတင်နိုင်ပါသည်။')]);
+        }
+        $path = $request->file('payment_receipt')->store('payment-receipts', 'local');
+        if (! $path) {
+            throw new RuntimeException(__('ငွေလွှဲပြေစာ သိမ်း၍မရပါ။'));
+        }
+
+        return $path;
+    }
+
     public function payment(Request $request, Stay $stay, FrontDesk $desk)
     {
-        $data = $request->validate(['amount' => 'required|integer|min:1|max:100000000', 'method' => ['required', Rule::in(['cash', 'transfer', 'card'])], 'note' => 'nullable|string|max:255']);
-        $desk->payment($stay, $data);
+        $data = $request->validate(['amount' => 'required|integer|min:1|max:100000000', 'method' => ['required', Rule::in(['cash', 'transfer', 'card'])], 'note' => 'nullable|string|max:255', 'payment_receipt' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120']);
+        $receiptPath = $this->storeReceipt($request, (int) $data['amount'], $data['method']);
+        unset($data['payment_receipt']);
+        try {
+            $desk->payment($stay, [...$data, 'receipt_path' => $receiptPath]);
+        } catch (Throwable $exception) {
+            if ($receiptPath) {
+                Storage::disk('local')->delete($receiptPath);
+            }
+            throw $exception;
+        }
 
         return back()->with('success', __('လက်ခံရရှိငွေ မှတ်ပြီးပါပြီ။'));
     }

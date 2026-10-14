@@ -21,9 +21,17 @@ class FrontDesk
         return DB::transaction(function () use ($data, $identityPaths) {
             $room = Room::lockForUpdate()->findOrFail($data['room_id']);
             self::require($room->status === 'available' && ! $room->activeStay()->exists(), __('အားလပ်သောအခန်းကိုသာ ရွေးနိုင်ပါသည်။'));
+            $overlap = $room->reservations()->where('status', 'booked')
+                ->where('arrival_at', '<', $data['expected_check_out_at'])
+                ->where('departure_at', '>', $data['check_in_at'])
+                ->when($data['reservation_id'] ?? null, fn ($query, $id) => $query->whereKeyNot($id))
+                ->exists();
+            self::require(! $overlap, __('ဤအချိန်တွင် အခန်းကို ကြိုတင်ချိန်းထားပြီးဖြစ်သည်။'));
             $stay = Stay::create([
                 ...collect($data)->only(['guest_name', 'gender', 'phone', 'notes', 'check_in_at', 'expected_check_out_at', 'room_charge'])->all(),
                 'room_id' => $room->id, 'active_room_id' => $room->id, 'created_by' => auth()->id(),
+                'source' => $data['source'] ?? 'walk_in', 'payment_term' => $data['payment_term'] ?? 'immediate',
+                'reservation_id' => $data['reservation_id'] ?? null,
             ]);
             foreach ($identityPaths as $path) {
                 $document = $stay->identityDocuments()->create(['path' => $path]);
@@ -34,7 +42,7 @@ class FrontDesk
             Audit::record('stay.check_in', $stay, null, $stay->toArray());
             Audit::record('room.occupied', $room, $before, $room->toArray());
             if (($data['deposit'] ?? 0) > 0) {
-                $this->payment($stay, ['amount' => $data['deposit'], 'method' => $data['method'], 'note' => 'Check-in payment']);
+                $this->payment($stay, ['amount' => $data['deposit'], 'method' => $data['method'], 'note' => 'Check-in payment', 'receipt_path' => $data['receipt_path'] ?? null]);
             }
 
             return $stay;
@@ -68,7 +76,7 @@ class FrontDesk
             $room = Room::lockForUpdate()->findOrFail($stay->room_id);
             $locked = Stay::lockForUpdate()->findOrFail($stay->id);
             self::require($locked->check_out_at === null, __('ဤဧည့်သည်ကို Check-out လုပ်ပြီးပါပြီ။'));
-            self::require($locked->balance === 0, __('ကျန်ငွေကို အရင်ရှင်းပေးပါ။'));
+            self::require($locked->balance === 0 || $locked->payment_term === 'credit', __('ကျန်ငွေကို အရင်ရှင်းပေးပါ။'));
             $before = $locked->toArray();
             $locked->update(['check_out_at' => now(), 'active_room_id' => null]);
             Audit::record('stay.check_out', $locked, $before, $locked->toArray());

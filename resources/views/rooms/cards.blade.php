@@ -10,7 +10,7 @@
         <div class="room-guest">
             @if($room->trashed())<span class="muted">{{ __('ဤအခန်းကို archive ထဲသိမ်းထားသည်။') }}</span>
             @elseif($room->activeStay)<a href="{{ route('stays.show', $room->activeStay) }}">{{ $room->activeStay->guest_name }}</a><small>{{ __('ထွက်ရန်') }} {{ $room->activeStay->expected_check_out_at->format('d M · H:i') }}</small>
-            @elseif($room->status === 'available')<span class="muted">{{ __('ဧည့်သည်အသစ် လက်ခံနိုင်သည်') }}</span>
+            @elseif($room->status === 'available')<span class="muted">{{ __('ဧည့်သည်အသစ် လက်ခံနိုင်သည်') }}</span>@if($room->nextReservation)<small><a href="{{ route('reservations.index') }}">{{ __('Booking') }} · {{ $room->nextReservation->arrival_at->format('d M H:i') }}</a></small>@endif
             @elseif($room->status === 'dirty')<span class="muted">{{ __('သန့်ရှင်းရေး ပြုလုပ်ရန်') }}</span>
             @else<span class="muted">{{ __('ပြင်ဆင်မှု ဆောင်ရွက်နေသည်') }}</span>@endif
         </div>

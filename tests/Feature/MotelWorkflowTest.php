@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use App\Models\Expense;
+use App\Models\ExpenseCategory;
 use App\Models\Floor;
+use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\RoomType;
 use App\Models\Stay;
@@ -340,6 +342,7 @@ class MotelWorkflowTest extends TestCase
         $this->get(route('reports.monthly', ['month' => '2026-10']))->assertOk()->assertViewHas('income', 10000)->assertViewHas('outgoings', 4000)->assertViewHas('net', 6000)->assertSee('Repair');
         $this->get(route('reports.monthly', ['month' => '2026-09']))->assertOk()->assertViewHas('income', 0)->assertViewHas('outgoings', 3000)->assertViewHas('net', -3000);
         $this->get(route('reports.monthly', ['month' => 'not-a-month']))->assertSessionHasErrors('month');
+        $this->get(route('reports.monthly', ['month' => '2026-11']))->assertSessionHasErrors('month');
         $csv = $this->get(route('reports.monthly.export', ['month' => '2026-10']))->assertOk()->streamedContent();
         $this->assertStringContainsString('2026-10', $csv);
         $this->assertStringContainsString('Repair', $csv);
@@ -465,5 +468,119 @@ class MotelWorkflowTest extends TestCase
         $this->get(route('rooms.index'))->assertOk()->assertSee('All floors');
         $this->post(route('locale.update'), ['locale' => 'fr'])->assertSessionHasErrors('locale');
         $this->get(route('dashboard'))->assertSee('<html lang="en">', false);
+    }
+
+    public function test_manager_can_rename_floor_and_room_type_without_changing_room_links(): void
+    {
+        $this->actingAs($this->staff);
+        $this->put(route('floors.update', $this->room->floor), ['number' => 2])->assertForbidden();
+        $this->staff->update(['role' => 'manager']);
+        $this->put(route('floors.update', $this->room->floor), ['number' => 2])->assertSessionHasNoErrors();
+        $this->put(route('room-types.update', $this->room->roomType), ['name' => 'Deluxe'])->assertSessionHasNoErrors();
+        $this->assertSame(2, $this->room->fresh()->floor->number);
+        $this->assertSame('Deluxe', $this->room->fresh()->roomType->name);
+        $this->put(route('floors.update', $this->room->floor), ['number' => 0])->assertSessionHasErrors('number');
+        $this->assertDatabaseHas('audit_logs', ['action' => 'floor.updated']);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'room_type.updated']);
+    }
+
+    public function test_reservation_blocks_overlaps_and_converts_to_a_stay_on_check_in(): void
+    {
+        $this->actingAs($this->staff);
+        $this->get(route('reservations.create'))->assertOk()->assertSee('အကြို Booking');
+        $booking = ['room_id' => $this->room->id, 'guest_name' => 'Booked Guest', 'gender' => 'female', 'phone' => '09123456789',
+            'arrival_at' => now()->addDay()->toDateTimeString(), 'departure_at' => now()->addDays(2)->toDateTimeString(), 'room_charge' => 35000];
+        $this->post(route('reservations.store'), $booking)->assertSessionHasNoErrors();
+        $reservation = Reservation::firstOrFail();
+        $this->get(route('reservations.index'))->assertOk()->assertSee('Booked Guest');
+        $this->assertSame('available', $this->room->fresh()->status);
+        $this->post(route('reservations.store'), $booking)->assertSessionHasErrors('arrival_at');
+        $this->post(route('stays.store'), [
+            'room_id' => $this->room->id, 'guest_name' => 'Walk In', 'gender' => 'male', 'phone' => '0999',
+            'check_in_at' => now()->subMinute()->toDateTimeString(), 'expected_check_out_at' => now()->addDays(2)->toDateTimeString(),
+            'room_charge' => 35000, 'deposit' => 0, 'method' => 'cash',
+        ])->assertSessionHasErrors('operation');
+        $this->post(route('reservations.check-in', $reservation))->assertSessionHasNoErrors();
+        $this->assertSame('checked_in', $reservation->fresh()->status);
+        $this->assertSame('occupied', $this->room->fresh()->status);
+        $this->assertSame('booking', $reservation->stay->source);
+        $this->post(route('reservations.check-in', $reservation))->assertSessionHasErrors('operation');
+    }
+
+    public function test_cancelling_a_booking_releases_its_time_slot(): void
+    {
+        $this->actingAs($this->staff);
+        $booking = ['room_id' => $this->room->id, 'guest_name' => 'First Guest', 'gender' => 'female', 'phone' => '09123',
+            'arrival_at' => now()->addDay()->toDateTimeString(), 'departure_at' => now()->addDays(2)->toDateTimeString(), 'room_charge' => 35000];
+        $this->post(route('reservations.store'), $booking)->assertSessionHasNoErrors();
+        $reservation = Reservation::firstOrFail();
+        $this->post(route('reservations.cancel', $reservation))->assertSessionHasNoErrors();
+        $this->post(route('reservations.store'), [...$booking, 'guest_name' => 'Second Guest'])->assertSessionHasNoErrors();
+        $this->assertSame(1, Reservation::where('status', 'booked')->count());
+        $this->post(route('reservations.cancel', $reservation))->assertSessionHasErrors('operation');
+        $this->assertDatabaseHas('audit_logs', ['action' => 'reservation.cancelled']);
+    }
+
+    public function test_credit_checkout_and_report_outstanding_track_unpaid_balance(): void
+    {
+        $stay = $this->checkIn(['deposit' => 10000, 'payment_term' => 'credit']);
+        $this->post(route('stays.checkout', $stay))->assertSessionHasNoErrors();
+        $this->assertSame(25000, $stay->fresh()->balance);
+        $this->get(route('reports.daily'))->assertViewHas('outstanding', 25000)->assertSee('Test Guest');
+        $this->staff->update(['role' => 'manager']);
+        $this->get(route('reports.monthly'))->assertViewHas('outstanding', 25000);
+        $this->post(route('stays.payments', $stay), ['amount' => 25000, 'method' => 'cash'])->assertSessionHasNoErrors();
+        $this->get(route('reports.monthly'))->assertViewHas('outstanding', 0);
+    }
+
+    public function test_explicit_pay_now_requires_full_room_charge(): void
+    {
+        $this->actingAs($this->staff);
+        $data = ['room_id' => $this->room->id, 'guest_name' => 'Pay Now', 'gender' => 'male', 'phone' => '0999',
+            'check_in_at' => now()->subMinute()->toDateTimeString(), 'expected_check_out_at' => now()->addDay()->toDateTimeString(),
+            'room_charge' => 35000, 'deposit' => 10000, 'method' => 'cash', 'payment_term' => 'immediate'];
+        $this->post(route('stays.store'), $data)->assertSessionHasErrors('deposit');
+        $this->assertSame(0, Stay::count());
+        $this->post(route('stays.store'), [...$data, 'deposit' => 35000])->assertSessionHasNoErrors();
+        $this->assertSame('immediate', Stay::firstOrFail()->payment_term);
+    }
+
+    public function test_prior_day_report_keeps_credit_balance_after_later_payment(): void
+    {
+        $stay = $this->checkIn(['deposit' => 0, 'payment_term' => 'credit']);
+        $this->post(route('stays.checkout', $stay))->assertSessionHasNoErrors();
+        $this->travelTo(now()->addDay());
+        $this->post(route('stays.payments', $stay), ['amount' => 35000, 'method' => 'cash'])->assertSessionHasNoErrors();
+        $this->get(route('reports.daily', ['date' => '2026-10-13']))->assertViewHas('outstanding', 35000);
+        $this->get(route('reports.daily', ['date' => '2026-10-14']))->assertViewHas('outstanding', 0);
+    }
+
+    public function test_transfer_receipt_is_private_and_only_accepted_for_transfer(): void
+    {
+        Storage::fake('local');
+        $stay = $this->checkIn(['deposit' => 0]);
+        $this->post(route('stays.payments', $stay), ['amount' => 1000, 'method' => 'cash',
+            'payment_receipt' => UploadedFile::fake()->image('receipt.jpg')])->assertSessionHasErrors('payment_receipt');
+        $this->post(route('stays.payments', $stay), ['amount' => 1000, 'method' => 'transfer',
+            'payment_receipt' => UploadedFile::fake()->image('receipt.jpg')])->assertSessionHasNoErrors();
+        $payment = $stay->payments()->firstOrFail();
+        Storage::disk('local')->assertExists($payment->receipt_path);
+        $this->get(route('stays.payments.receipt', [$stay, $payment]))->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+        $this->post(route('logout'));
+        $this->get(route('stays.payments.receipt', [$stay, $payment]))->assertRedirect('/login');
+    }
+
+    public function test_manager_can_add_and_rename_expense_categories_used_in_reports(): void
+    {
+        $this->actingAs($this->staff);
+        $this->post(route('expense-categories.store'), ['name' => 'Transport'])->assertForbidden();
+        $this->staff->update(['role' => 'manager']);
+        $this->post(route('expense-categories.store'), ['name' => 'Transport'])->assertSessionHasNoErrors();
+        $category = ExpenseCategory::where('name', 'Transport')->firstOrFail();
+        $this->post(route('expenses.store'), ['expense_date' => today()->toDateString(), 'category' => $category->key,
+            'description' => 'Taxi', 'amount' => 1500])->assertSessionHasNoErrors();
+        $this->put(route('expense-categories.update', $category), ['name' => 'Local transport'])->assertSessionHasNoErrors();
+        $this->get(route('reports.monthly'))->assertOk()->assertSee('Local transport')->assertSee('Taxi');
+        $this->assertDatabaseHas('expenses', ['category' => $category->key, 'amount' => 1500]);
     }
 }

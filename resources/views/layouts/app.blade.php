@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="{{ app()->getLocale() }}">
 <head>
+    <script>try { document.documentElement.dataset.theme = localStorage.getItem('motel-theme') === 'dark' ? 'dark' : 'light'; } catch (_) { document.documentElement.dataset.theme = 'light'; }</script>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="preload" href="{{ asset('fonts/noto-sans-myanmar-variable.ttf') }}" as="font" type="font/ttf" crossorigin>
     <title>@yield('title') · Motel</title>
@@ -12,7 +13,7 @@
         <a href="{{ route('dashboard') }}" class="brand"><span class="brand-icon">M</span><span>MOTEL<small>{{ __('ဝန်ထမ်းသုံး စီမံခန့်ခွဲမှု') }}</small></span></a>
         <p class="nav-label">{{ __('လုပ်ငန်းဆောင်ရွက်မှု') }}</p>
         <nav>
-            @foreach(['dashboard'=>['အနှစ်ချုပ်','grid'],'rooms.index'=>['အခန်းများ','home'],'stays.index'=>['ဧည့်သည်စာရင်း','users'],'reports.daily'=>['နေ့စဉ်စာရင်း','calendar']] as $route => $item)
+            @foreach(['dashboard'=>['အနှစ်ချုပ်','grid'],'rooms.index'=>['အခန်းများ','home'],'stays.index'=>['ဧည့်သည်စာရင်း','users'],'reservations.index'=>['Booking စာရင်း','calendar'],'reports.daily'=>['နေ့စဉ်စာရင်း','calendar']] as $route => $item)
                 <a class="{{ request()->routeIs($route) ? 'active' : '' }}" href="{{ route($route) }}">@include('icon', ['name'=>$item[1]]){{ __($item[0]) }}</a>
             @endforeach
             @if(auth()->user()->isManager())
@@ -26,6 +27,7 @@
     </aside>
     <main>
         <header class="topbar"><span>{{ __('လုပ်ငန်းခွင်') }} <span class="muted">/ @yield('title')</span></span><div class="topbar-tools">
+            <button type="button" class="theme-toggle" data-theme-toggle data-label-dark="{{ __('Dark mode') }}" data-label-light="{{ __('Light mode') }}" aria-label="{{ __('အမှောင် / အလင်း ပြောင်းရန်') }}" aria-pressed="false">☾ <span>{{ __('Dark mode') }}</span></button>
             <form class="language-switch" method="post" action="{{ route('locale.update') }}" aria-label="{{ __('ဘာသာစကား') }}">@csrf
                 <button type="submit" name="locale" value="my" class="{{ app()->getLocale() === 'my' ? 'active' : '' }}" aria-pressed="{{ app()->getLocale() === 'my' ? 'true' : 'false' }}">မြန်မာ</button>
                 <button type="submit" name="locale" value="en" class="{{ app()->getLocale() === 'en' ? 'active' : '' }}" aria-pressed="{{ app()->getLocale() === 'en' ? 'true' : 'false' }}">English</button>

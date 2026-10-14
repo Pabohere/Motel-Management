@@ -7,7 +7,6 @@ use App\Services\Audit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class ExpenseController extends Controller
 {
@@ -15,7 +14,7 @@ class ExpenseController extends Controller
     {
         $data = $request->validate([
             'expense_date' => 'required|date_format:Y-m-d|before_or_equal:today',
-            'category' => ['required', Rule::in(['supplies', 'maintenance', 'utilities', 'salary', 'other'])],
+            'category' => ['required', 'string', 'max:40', 'exists:expense_categories,key'],
             'description' => 'required|string|max:255',
             'amount' => 'required|integer|min:1|max:100000000',
         ]);

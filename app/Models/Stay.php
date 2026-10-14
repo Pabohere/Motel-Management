@@ -24,6 +24,11 @@ class Stay extends Model
         return $this->belongsTo(Room::class)->withTrashed();
     }
 
+    public function reservation()
+    {
+        return $this->belongsTo(Reservation::class);
+    }
+
     public function charges()
     {
         return $this->hasMany(Charge::class);
