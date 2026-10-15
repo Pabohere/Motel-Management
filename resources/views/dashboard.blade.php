@@ -67,7 +67,7 @@
                 <td>{{ isset(\App\Models\Stay::GENDERS[$stay->gender]) ? __(\App\Models\Stay::GENDERS[$stay->gender]) : '—' }}</td>
                 <td><span class="room-pill">{{ $stay->room->number }}</span></td>
                 <td><span class="date-cell">{{ $stay->check_in_at->format('d M Y') }}<small>{{ $stay->check_in_at->format('H:i') }}</small></span></td>
-                <td><span class="date-cell">{{ $stay->expected_check_out_at->format('d M Y') }}<small>{{ $stay->expected_check_out_at->format('H:i') }}</small></span>@if($stay->expected_check_out_at->isPast())<span class="badge dirty" title="{{ __('ထွက်ရန်သတ်မှတ်ချိန် ကျော်လွန်ပြီးဖြစ်သည်။') }}">{{ __('ထွက်ရန်ချိန်ကျော်') }}</span>@endif</td>
+                <td class="guest-checkout"><div class="checkout-stack"><span class="date-cell">{{ $stay->expected_check_out_at->format('d M Y') }}<small>{{ $stay->expected_check_out_at->format('H:i') }}</small></span>@if($stay->expected_check_out_at->isPast())<span class="badge dirty" title="{{ __('ထွက်ရန်သတ်မှတ်ချိန် ကျော်လွန်ပြီးဖြစ်သည်။') }}">{{ __('ထွက်ရန်ချိန်ကျော်') }}</span>@endif</div></td>
                 <td>{{ $stay->phone }}</td><td><strong class="{{ $stay->balance > 0 ? 'balance-due' : '' }}">{{ number_format($stay->balance) }} <small class="inline-currency">K</small></strong></td>
             </tr>
             @endforeach

@@ -97,6 +97,26 @@ function bindRowLinks(scope = document) {
 }
 bindRowLinks();
 
+document.querySelectorAll('.room-floor').forEach(floor => {
+  const rail = floor.querySelector('.room-rail');
+  const buttons = floor.querySelectorAll('[data-rail-scroll]');
+  if (!rail) return;
+  const updateButtons = () => {
+    const maxScroll = rail.scrollWidth - rail.clientWidth;
+    buttons.forEach(button => {
+      button.disabled = button.dataset.railScroll === '-1'
+        ? rail.scrollLeft <= 8
+        : rail.scrollLeft >= maxScroll - 8;
+    });
+  };
+  buttons.forEach(button => button.addEventListener('click', () => {
+    rail.scrollBy({left: Number(button.dataset.railScroll) * Math.max(280, rail.clientWidth * .75), behavior: 'smooth'});
+  }));
+  rail.addEventListener('scroll', updateButtons, {passive: true});
+  window.addEventListener('resize', updateButtons);
+  updateButtons();
+});
+
 // GET filters update on selection. Text searches fetch the matching page without
 // taking focus from the field or hiding results on later pagination pages.
 document.querySelectorAll('form[data-auto-filter]').forEach(form => {

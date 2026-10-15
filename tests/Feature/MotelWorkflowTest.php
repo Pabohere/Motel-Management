@@ -533,21 +533,29 @@ class MotelWorkflowTest extends TestCase
         $this->post(route('reservations.check-in', $reservation))->assertSessionHasErrors('operation');
     }
 
-    public function test_rooms_preview_is_limited_to_three_rows_and_all_rooms_remain_accessible(): void
+    public function test_rooms_preview_links_to_all_rooms_grouped_by_floor(): void
     {
         $this->actingAs($this->staff);
         foreach (range(102, 110) as $number) {
             Room::create(['number' => (string) $number, 'floor_id' => $this->room->floor_id,
                 'room_type_id' => $this->room->room_type_id, 'rate' => 35000]);
         }
+        $upperFloor = Floor::create(['number' => 2]);
+        Room::create(['number' => '201', 'floor_id' => $upperFloor->id,
+            'room_type_id' => $this->room->room_type_id, 'rate' => 45000]);
 
         $this->get(route('rooms.index'))->assertOk()
-            ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 9)
+            ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 7 && $rooms->pluck('number')->contains('201'))
+            ->assertSee('2 ထပ်')
+            ->assertSee('6 / 10 ခန်း')
             ->assertSee(route('rooms.all'), false);
         $this->get(route('rooms.all'))->assertOk()
-            ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 10);
+            ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 11)
+            ->assertSee('room-floor--grid')
+            ->assertSee('110')
+            ->assertSee('201');
         $this->get(route('rooms.all', ['status' => 'available']))->assertOk()
-            ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 10);
+            ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 11);
     }
 
     public function test_cancelling_a_booking_releases_its_time_slot(): void

@@ -37,10 +37,13 @@ class RoomController extends Controller
         }
 
         $totalRooms = $rooms->count();
-        $rooms = $rooms->take(9);
+        $floorRoomCounts = $rooms->countBy(fn (Room $room) => $room->floor->number);
+        $rooms = $rooms->groupBy('floor_id')
+            ->flatMap(fn ($floorRooms) => $floorRooms->take(6))
+            ->values();
         $roomTypes = RoomType::orderBy('name')->get();
 
-        return view('rooms.index', compact('rooms', 'floors', 'roomTypes', 'totalRooms'));
+        return view('rooms.index', compact('rooms', 'floors', 'roomTypes', 'totalRooms', 'floorRoomCounts'));
     }
 
     public function storeFloor(Request $request)

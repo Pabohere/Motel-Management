@@ -1,12 +1,24 @@
-<div class="room-grid">
-@forelse($rooms as $room)
-    <article class="room-card {{ $room->trashed() ? 'archived' : $room->status }}">
+@forelse($rooms->groupBy(fn ($room) => $room->floor->number) as $floorNumber => $floorRooms)
+<section class="room-floor {{ $roomDisplay === 'grid' ? 'room-floor--grid' : '' }}" aria-label="{{ __('အထပ်') }} {{ $floorNumber }}">
+    <div class="room-floor-heading">
+        <div><span class="room-floor-kicker">{{ __('အထပ်') }} {{ $floorNumber }}</span><h2>{{ $floorNumber }} {{ __('ထပ်') }} <span class="room-floor-count">{{ $floorRooms->count() }}@if($roomDisplay === 'rail' && ($floorRoomCounts[$floorNumber] ?? 0) > $floorRooms->count()) / {{ $floorRoomCounts[$floorNumber] }}@endif {{ __('ခန်း') }}</span></h2></div>
+        @if($roomDisplay === 'rail')
+        <div class="room-rail-controls">
+            <button type="button" class="room-rail-button" data-rail-scroll="-1" aria-label="{{ __('အခန်းများကို ဘယ်ဘက်သို့ ရွှေ့ရန်') }}">←</button>
+            <button type="button" class="room-rail-button" data-rail-scroll="1" aria-label="{{ __('အခန်းများကို ညာဘက်သို့ ရွှေ့ရန်') }}">→</button>
+        </div>
+        @endif
+    </div>
+    <div class="room-rail" @if($roomDisplay === 'rail') tabindex="0" @endif aria-label="{{ __('အထပ်') }} {{ $floorNumber }} {{ __('အခန်းများ') }}">
+@foreach($floorRooms as $room)
+    <article class="room-card room-rail-card {{ $room->trashed() ? 'archived' : $room->status }}">
         <a class="card-hit" href="{{ route('rooms.show', $room) }}" aria-label="{{ __('အခန်း') }} {{ $room->number }} {{ __('အသေးစိတ်ကြည့်ရန်') }}"></a>
-        <div class="room-top">
+        <div class="room-card-hero">
+            <span class="room-card-floor">{{ $room->floor->number }} {{ __('ထပ်') }}</span>
             <span class="room-number">{{ $room->number }}</span>
             <span class="badge {{ $room->trashed() ? 'maintenance' : $room->status }}">{{ $room->trashed() ? 'Archive' : __(\App\Models\Room::STATUSES[$room->status]) }}</span>
         </div>
-        <p class="muted">{{ $room->floor->number }} {{ __('ထပ်') }} · {{ $room->roomType->name }} <span class="room-rate">{{ number_format($room->rate) }} K / {{ __('ည') }}</span></p>
+        <p class="room-card-meta"><span>{{ $room->roomType->name }}</span><span class="room-rate">{{ number_format($room->rate) }} K / {{ __('ည') }}</span></p>
         <div class="room-guest">
             @if($room->trashed())<span class="muted">{{ __('ဤအခန်းကို archive ထဲသိမ်းထားသည်။') }}</span>
             @elseif($room->activeStay)<a href="{{ route('stays.show', $room->activeStay) }}">{{ $room->activeStay->guest_name }}</a><small>{{ __('ထွက်ရန်') }} {{ $room->activeStay->expected_check_out_at->format('d M · H:i') }}</small>
@@ -25,7 +37,9 @@
             @endif
         </div>
     </article>
+@endforeach
+    </div>
+</section>
 @empty
-    <div class="empty">{{ __('ဤအခြေအနေရှိသောအခန်း မရှိသေးပါ။') }}</div>
+<div class="panel empty">{{ __('ဤအခြေအနေရှိသောအခန်း မရှိသေးပါ။') }}</div>
 @endforelse
-</div>
