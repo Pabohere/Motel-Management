@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ asset('app.css') }}">
     <link rel="stylesheet" href="{{ asset('glass.css') }}?v={{ filemtime(public_path('glass.css')) }}">
     <link rel="stylesheet" href="{{ asset('reference.css') }}?v={{ filemtime(public_path('reference.css')) }}">
+    @include('pwa-head')
 </head>
 <body>
 @php
@@ -38,7 +39,7 @@
                 <a class="{{ $item['active'] ? 'active' : '' }}" href="{{ route($route) }}" @if($item['active']) aria-current="page" @endif>@include('icon', ['name' => $item['icon']]){{ __($item['label']) }}</a>
             @endforeach
         </nav>
-        <div class="sidebar-bottom"><span class="avatar">{{ mb_substr(auth()->user()->name,0,1) }}</span><strong>{{ auth()->user()->name }}</strong><small>{{ auth()->user()->isManager() ? __('မန်နေဂျာ') : __('ဝန်ထမ်း') }}</small><a href="{{ route('password.edit') }}">{{ __('စကားဝှက်ပြောင်းရန်') }}</a><form method="post" action="{{ route('logout') }}">@csrf<button class="logout">{{ __('စနစ်မှထွက်ရန်') }}</button></form></div>
+        <div class="sidebar-bottom">@include('pwa-install-button')<span class="avatar">{{ mb_substr(auth()->user()->name,0,1) }}</span><strong>{{ auth()->user()->name }}</strong><small>{{ auth()->user()->isManager() ? __('မန်နေဂျာ') : __('ဝန်ထမ်း') }}</small><a href="{{ route('password.edit') }}">{{ __('စကားဝှက်ပြောင်းရန်') }}</a><form method="post" action="{{ route('logout') }}">@csrf<button class="logout">{{ __('စနစ်မှထွက်ရန်') }}</button></form></div>
     </aside>
     <main>
         <header class="topbar"><strong class="topbar-title">@yield('title')</strong><div class="topbar-tools">
@@ -69,6 +70,8 @@
         @endforeach
         <a href="{{ route('password.edit') }}" class="{{ request()->routeIs('password.*') ? 'active' : '' }}" @if(request()->routeIs('password.*')) aria-current="page" @endif>@include('icon', ['name' => 'key'])<span>{{ __('စကားဝှက်ပြောင်းရန်') }}</span></a>
     </nav>
+    @include('pwa-install-button')
     <form method="post" action="{{ route('logout') }}" class="mobile-menu-logout">@csrf<button type="submit">@include('icon', ['name' => 'logout']){{ __('စနစ်မှထွက်ရန်') }}</button></form>
 </dialog>
+@include('pwa-controls')
 <script src="{{ asset('app.js') }}?v={{ filemtime(public_path('app.js')) }}" defer></script></body></html>

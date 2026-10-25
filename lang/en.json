@@ -533,5 +533,11 @@
     "PDF ထုတ်ခြင်း မအောင်မြင်ပါ။ ခဏအကြာတွင် ပြန်ကြိုးစားပါ။": "Unable to generate the PDF. Please try again shortly.",
     "အဓိကမီနူး": "Main navigation",
     "အခြားမီနူးများ": "More navigation",
-    "ပိုမို": "More"
+    "ပိုမို": "More",
+    "App ထည့်သွင်းရန်": "Install app",
+    "Motel app ထည့်သွင်းရန်": "Install Motel app",
+    "Browser မီနူးထဲမှ Install app သို့မဟုတ် Add to Home screen ကို ရွေးပါ။": "Open your browser menu and choose Install app or Add to Home screen.",
+    "Safari တွင် ဖွင့်ပြီး Share → Add to Home Screen → Add ကို နှိပ်ပါ။": "Open in Safari, then tap Share → Add to Home Screen → Add.",
+    "စာရင်းများကြည့်ရန်နှင့် ပြင်ဆင်ရန် အင်တာနက် လိုအပ်ပါသည်။": "An internet connection is required to view and update records.",
+    "အင်တာနက်ချိတ်ဆက်မှု မရှိပါ။ စာရင်းတင်ရန် အင်တာနက် ပြန်ချိတ်ပေးပါ။": "You are offline. Reconnect before submitting records."
 }
