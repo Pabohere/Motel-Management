@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\FinancialEntryController;
 use App\Http\Controllers\MonthlyReportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReservationController;
@@ -55,7 +56,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/reports/daily', ReportController::class)->name('reports.daily');
     Route::middleware('manager')->group(function () {
         Route::get('/reports/monthly', [MonthlyReportController::class, 'index'])->name('reports.monthly');
+        Route::get('/reports/monthly/pdf', [MonthlyReportController::class, 'pdf'])->middleware('throttle:10,1')->name('reports.monthly.pdf');
+        Route::get('/reports/monthly/statements', [MonthlyReportController::class, 'statements'])->name('reports.monthly.statements');
         Route::get('/reports/monthly/export', [MonthlyReportController::class, 'export'])->name('reports.monthly.export');
+        Route::post('/financial-entries', [FinancialEntryController::class, 'store'])->name('financial-entries.store');
         Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
         Route::post('/expense-categories', [ExpenseCategoryController::class, 'store'])->name('expense-categories.store');
         Route::put('/expense-categories/{expenseCategory}', [ExpenseCategoryController::class, 'update'])->name('expense-categories.update');
@@ -73,6 +77,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('/stays/{stay}', [StayController::class, 'destroy'])->name('stays.destroy');
         Route::post('/stays/{stay}/restore', [StayController::class, 'restore'])->withTrashed()->name('stays.restore');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/{user}/photo', [UserController::class, 'photo'])->name('users.photo');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::get('/audit', fn () => view('audit.index', ['logs' => AuditLog::with('user')->latest('id')->paginate(30)]))->name('audit.index');

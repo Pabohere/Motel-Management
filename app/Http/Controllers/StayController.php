@@ -25,7 +25,7 @@ class StayController extends Controller
         if (($data['status'] ?? null) === 'archived' && ! $request->user()->isManager()) {
             abort(403);
         }
-        $stays = Stay::with(['room', 'charges', 'payments', 'identityDocuments'])
+        $stays = Stay::with(['room', 'identityDocuments'])->withFinancialTotals()
             ->when(($data['status'] ?? '') === 'archived', fn ($q) => $q->onlyTrashed())
             ->when($data['q'] ?? null, fn ($q, $term) => $q->where(fn ($q) => $q->where('guest_name', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%')))
             ->when($data['source'] ?? null, fn ($q, $source) => $q->where('source', $source))

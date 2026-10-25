@@ -4,24 +4,26 @@
 <div class="page-heading monthly-heading">
     <div>
         <span class="eyebrow">MONTHLY REPORT · {{ $month }}</span>
-        <h1>{{ __('လစဉ် ဝင်ငွေ / ထွက်ငွေ') }}</h1>
-        <p class="muted">{{ __('ဝင်ငွေမှာ လက်ခံရရှိသည့်ရက်၊ ထွက်ငွေမှာ သုံးစွဲသည့်ရက်အလိုက် ဖြစ်သည်။ · Asia/Yangon') }}</p>
+        <h1>{{ __('လစဉ်ဘဏ္ဍာရေးရှင်းတမ်း') }}</h1>
+        <p class="muted">{{ __('Balance Sheet၊ P&L နှင့် Cash Flow · Asia/Yangon') }}</p>
     </div>
     <form class="filters report-actions" method="get" action="{{ route('reports.monthly') }}" data-auto-filter>
         <input type="month" name="month" value="{{ $month }}" aria-label="{{ __('လရွေးရန်') }}" required>
         <button class="btn secondary">{{ __('ကြည့်မည်') }}</button>
         <a class="btn secondary" href="{{ route('reports.monthly.export', ['month' => $month]) }}">CSV Download</a>
-        <button class="btn secondary" type="button" onclick="window.print()">Print / PDF</button>
+        <a class="btn" href="{{ route('reports.monthly.statements', ['month' => $month]) }}">{{ __('ဘဏ္ဍာရေးရှင်းတမ်း Download (Excel)') }}</a>
+        <a class="btn secondary" href="{{ route('reports.monthly.pdf', ['month' => $month]) }}">PDF Download</a>
     </form>
 </div>
+<div class="section-heading"><h2>{{ __('လက်ခံငွေ / ပေးချေငွေ အသေးစိတ်') }}</h2></div>
 <div class="stats monthly-stats">
     <div class="stat"><span>{{ __('ဝင်ငွေ · လက်ခံရရှိငွေ') }}</span><strong>{{ number_format($income) }}<small> K</small></strong></div>
     <div class="stat"><span>{{ __('ထွက်ငွေ') }}</span><strong>{{ number_format($outgoings) }}<small> K</small></strong></div>
-    <div class="stat"><span>{{ __('အသားတင် လက်ကျန်') }}</span><strong class="{{ $net < 0 ? 'balance-due' : '' }}">{{ number_format($net) }}<small> K</small></strong></div>
+    <div class="stat"><span>{{ __('လက်ခံငွေနှင့် ပေးချေငွေကွာခြားချက်') }}</span><strong class="{{ $net < 0 ? 'balance-due' : '' }}">{{ number_format($net) }}<small> K</small></strong></div>
     <div class="stat"><span>{{ __('ဧည့်သည် ဝင် / ထွက်') }}</span><strong>{{ $checkIns }}<small> / {{ $checkOuts }} ဦး</small></strong></div>
     <div class="stat"><span>{{ __('အကြွေးကျန်') }}</span><strong class="{{ $outstanding > 0 ? 'balance-due' : '' }}">{{ number_format($outstanding) }}<small> K</small></strong></div>
 </div>
-<section class="panel report-section monthly-cashflow"><div class="section-heading"><h2>{{ __('နေ့အလိုက် ဝင်ငွေ / ထွက်ငွေ') }}</h2><span class="muted">{{ $month }}</span></div><div class="report-table-scroll"><table><thead><tr><th>{{ __('ရက်စွဲ') }}</th><th>{{ __('ဝင်ငွေ') }}</th><th>{{ __('ထွက်ငွေ') }}</th><th>{{ __('အသားတင် လက်ကျန်') }}</th></tr></thead><tbody>
+<section class="panel report-section monthly-cashflow"><div class="section-heading"><h2>{{ __('နေ့အလိုက် ဝင်ငွေ / ထွက်ငွေ') }}</h2><span class="muted">{{ $month }}</span></div><div class="report-table-scroll"><table><thead><tr><th>{{ __('ရက်စွဲ') }}</th><th>{{ __('ဝင်ငွေ') }}</th><th>{{ __('ထွက်ငွေ') }}</th><th>{{ __('လက်ခံငွေနှင့် ပေးချေငွေကွာခြားချက်') }}</th></tr></thead><tbody>
 @forelse($dailyPayments->keys()->merge($dailyExpenses->keys())->unique()->sort() as $day)
 @php($dayIncome = $dailyPayments[$day] ?? 0) @php($dayExpense = $dailyExpenses[$day] ?? 0)
 <tr><td>{{ $day }}</td><td>{{ number_format($dayIncome) }} K</td><td>{{ number_format($dayExpense) }} K</td><td>{{ number_format($dayIncome - $dayExpense) }} K</td></tr>
@@ -63,6 +65,7 @@
     </section>
 </div>
 <section class="panel top-space report-section"><div class="section-heading"><h2>{{ __('အကြွေးကျန်စာရင်း') }}</h2><span class="count-pill">{{ $outstandingStays->count() }}</span></div><p class="muted">{{ __('ရွေးထားသောလ ကုန်ဆုံးချိန်အထိ မရရှိသေးသောငွေ') }}</p><div class="report-table-scroll"><table><thead><tr><th>{{ __('ဧည့်သည်') }}</th><th>{{ __('အခန်း') }}</th><th>{{ __('ကျသင့်ငွေ') }}</th><th>{{ __('ရရှိငွေ') }}</th><th>{{ __('ကျန်ငွေ') }}</th></tr></thead><tbody>@forelse($outstandingStays as $stay)<tr><td><a href="{{ route('stays.show', $stay) }}">{{ $stay->guest_name }}</a></td><td>{{ $stay->room->number }}</td><td>{{ number_format($stay->total) }} K</td><td>{{ number_format($stay->paid) }} K</td><td class="balance-due">{{ number_format($stay->balance) }} K</td></tr>@empty<tr><td colspan="5" class="empty">{{ __('အကြွေးကျန် မရှိပါ။') }}</td></tr>@endforelse</tbody></table></div></section>
+@include('reports.financial-entries')
 <section class="panel top-space expense-form-panel">
     <div><span class="eyebrow">MANAGER ONLY</span><h2>{{ __('ထွက်ငွေ မှတ်တမ်းတင်ရန်') }}</h2></div>
     <form method="post" action="{{ route('expenses.store') }}">

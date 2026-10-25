@@ -25,10 +25,10 @@ class ReportController extends Controller
         $occupied = Stay::withTrashed()->where('check_in_at', '<=', $asOf)->where(fn ($q) => $q->whereNull('check_out_at')->orWhere('check_out_at', '>', $asOf))->distinct()->count('room_id');
         $totalRooms = Room::withTrashed()->where('created_at', '<=', $asOf)
             ->where(fn ($q) => $q->whereNull('deleted_at')->orWhere('deleted_at', '>', $asOf))->count();
-        $outstandingStays = Stay::withTrashed()->with(['room', 'charges' => fn ($query) => $query->where('created_at', '<=', $asOf), 'payments' => fn ($query) => $query->where('created_at', '<=', $asOf)])
-            ->where('check_in_at', '<=', $asOf)->where('created_at', '<=', $asOf)->get()->filter(fn ($stay) => $stay->balance > 0)->values();
+        $outstandingStays = Stay::withTrashed()->withFinancialTotals($asOf)
+            ->where('check_in_at', '<=', $asOf)->where('created_at', '<=', $asOf)->get()->filter(fn ($stay) => $stay->balance > 0)->values()->load('room');
         $outstanding = $outstandingStays->sum('balance');
-        $expenses = Expense::with('creator')->whereDate('expense_date', $date)->orderBy('id')->get();
+        $expenses = Expense::with('creator')->where('expense_date', $date)->orderBy('id')->get();
         $categories = ExpenseCategory::pluck('name', 'key');
 
         return view('reports.daily', compact('date', 'checkIns', 'checkOuts', 'payments', 'occupied', 'totalRooms', 'outstanding', 'outstandingStays', 'expenses', 'categories'));

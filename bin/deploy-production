@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+cd "$HOME/motel-app"
+[[ "$(git branch --show-current)" == prod ]] || { echo 'Expected production branch'; exit 1; }
+git fetch origin prod
+release=$(git rev-parse origin/prod)
+git merge-base --is-ancestor HEAD "$release"
+# Preserve hosting configuration; reject unexpected application edits.
+while IFS= read -r changed; do
+    case "$changed" in public/.htaccess|public/php.ini) ;; *) echo "Unexpected local change: $changed"; exit 1 ;; esac
+done < <(git status --porcelain | cut -c4-)
+backup="$HOME/motel-backups/$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p "$backup"
+export MOTEL_RELEASE_BACKUP="$backup"
+git rev-parse HEAD > "$backup/revision"
+git diff --binary > "$backup/hosting.patch"
+cp .env "$backup/environment"
+cp -p public/.htaccess "$backup/public.htaccess"
+if [[ -f public/php.ini ]]; then cp -p public/php.ini "$backup/public.php.ini"; fi
+php artisan down --retry=30 --no-interaction
+trap 'status=$?; php artisan up --no-interaction || true; if (( status != 0 )); then echo "DEPLOYMENT FAILED. Backup: $MOTEL_RELEASE_BACKUP"; fi; exit "$status"' EXIT
+php <<'PHP'
+<?php
+require 'vendor/autoload.php';
+$app = require 'bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$connection = Illuminate\Support\Facades\DB::connection();
+if ($connection->getDriverName() !== 'sqlite') {
+    throw new RuntimeException('Expected SQLite; stop before changing the release.');
+}
+$pdo = $connection->getPdo();
+$pdo->exec('VACUUM INTO '.$pdo->quote(getenv('MOTEL_RELEASE_BACKUP').'/database.sqlite'));
+$counts = [];
+foreach (['users', 'rooms', 'stays', 'payments', 'expenses'] as $table) {
+    $counts[$table] = $connection->table($table)->count();
+}
+file_put_contents(getenv('MOTEL_RELEASE_BACKUP').'/record-counts.json', json_encode($counts));
+echo "Consistent database backup created.\n";
+PHP
+tar -czf "$backup/uploads.tar.gz" storage/app
+git merge --ff-only "$release"
+php "$HOME/composer.phar" install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+php artisan optimize:clear --no-interaction
+php artisan migrate --force --no-interaction
+php artisan optimize --no-interaction
+php <<'PHP'
+<?php
+require 'vendor/autoload.php';
+$app = require 'bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$before = json_decode(file_get_contents(getenv('MOTEL_RELEASE_BACKUP').'/record-counts.json'), true);
+foreach ($before as $table => $count) {
+    if (Illuminate\Support\Facades\DB::table($table)->count() !== $count) {
+        throw new RuntimeException('Record count changed during deployment: '.$table);
+    }
+}
+echo "Existing record counts verified.\n";
+PHP
+php artisan migrate:status --no-interaction
+printf '\nDEPLOYMENT COMPLETE: %s\nBackup: %s\n' "$release" "$backup"

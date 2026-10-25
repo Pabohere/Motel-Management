@@ -7,6 +7,7 @@ use App\Models\Room;
 use App\Models\RoomType;
 use App\Services\Audit;
 use App\Services\FrontDesk;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -25,7 +26,7 @@ class RoomController extends Controller
         if ($status === 'archived' && ! $request->user()->isManager()) {
             abort(403);
         }
-        $rooms = Room::with(['activeStay', 'floor', 'roomType', 'nextReservation'])
+        $rooms = Room::query()
             ->when($status === 'archived', fn ($q) => $q->onlyTrashed())
             ->when($status && $status !== 'archived', fn ($q) => $q->where('status', $status))
             ->when($floorId, fn ($q) => $q->where('rooms.floor_id', $floorId))
@@ -33,14 +34,18 @@ class RoomController extends Controller
             ->orderBy('floors.number')->orderBy('rooms.number')->select('rooms.*')->get();
         $floors = Floor::orderBy('number')->get();
         if ($request->routeIs('rooms.all')) {
+            $rooms->load(['activeStay', 'floor', 'roomType', 'nextReservation']);
+
             return view('rooms.all', compact('rooms', 'floors'));
         }
 
         $totalRooms = $rooms->count();
-        $floorRoomCounts = $rooms->countBy(fn (Room $room) => $room->floor->number);
-        $rooms = $rooms->groupBy('floor_id')
+        $floorNumbers = $floors->pluck('number', 'id');
+        $floorRoomCounts = $rooms->countBy(fn (Room $room) => $floorNumbers[$room->floor_id]);
+        $rooms = new Collection($rooms->groupBy('floor_id')
             ->flatMap(fn ($floorRooms) => $floorRooms->take(6))
-            ->values();
+            ->values()->all());
+        $rooms->load(['activeStay', 'floor', 'roomType', 'nextReservation']);
         $roomTypes = RoomType::orderBy('name')->get();
 
         return view('rooms.index', compact('rooms', 'floors', 'roomTypes', 'totalRooms', 'floorRoomCounts'));

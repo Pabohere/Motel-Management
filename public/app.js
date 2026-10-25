@@ -227,3 +227,30 @@ if (identityDialog && typeof identityDialog.showModal === 'function') {
   identityDialog.addEventListener('click', event => { if (event.target === identityDialog) identityDialog.close(); });
   identityDialog.addEventListener('close', () => { image.removeAttribute('src'); frame.removeAttribute('src'); });
 }
+
+const mobileMenu = document.getElementById('mobile-menu');
+const mobileMenuTrigger = document.querySelector('[data-mobile-menu-open]');
+if (mobileMenu && mobileMenuTrigger) {
+  const compactViewport = window.matchMedia('(max-width: 1199px), (hover: none) and (pointer: coarse) and (max-width: 1400px)');
+  mobileMenuTrigger.addEventListener('click', () => {
+    if (mobileMenu.open || !compactViewport.matches) return;
+    mobileMenu.showModal();
+    mobileMenuTrigger.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('mobile-menu-open');
+  });
+  mobileMenu.querySelector('[data-mobile-menu-close]').addEventListener('click', () => mobileMenu.close());
+  mobileMenu.addEventListener('click', event => {
+    if (event.target !== mobileMenu) return;
+    const bounds = mobileMenu.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) mobileMenu.close();
+  });
+  mobileMenu.addEventListener('close', () => {
+    mobileMenuTrigger.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('mobile-menu-open');
+  });
+  mobileMenu.querySelectorAll('a').forEach(link => link.addEventListener('click', () => mobileMenu.close()));
+  compactViewport.addEventListener('change', () => {
+    if (!compactViewport.matches && mobileMenu.open) mobileMenu.close();
+  });
+  window.addEventListener('pagehide', () => { if (mobileMenu.open) mobileMenu.close(); });
+}

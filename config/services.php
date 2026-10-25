@@ -14,6 +14,10 @@ return [
     |
     */
 
+    'pdf' => [
+        'chrome_binary' => env('PDF_CHROME_BINARY'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

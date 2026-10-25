@@ -1,9 +1,10 @@
 @extends('layouts.app')
 @section('title', __('အခန်းများ'))
 @section('content')
+<div class="rooms-page">
 <div class="page-heading"><div><h1>{{ __('အခန်းများ') }}</h1><p class="muted">{{ __('အထပ်၊ အမျိုးအစားနှင့် အခန်းအခြေအနေများ') }}</p></div>@if(auth()->user()->isManager())<a class="btn" href="#room-setup">{{ __('+ အခန်းစီမံရန်') }}</a>@endif</div>
 @include('rooms.filters', ['action' => route('rooms.index')])
-@include('rooms.cards', ['roomDisplay' => 'rail'])
+@include('rooms.cards', ['roomDisplay' => 'grid'])
 <div class="room-view-all">
     <span class="muted">{{ $totalRooms }} {{ __('ခန်းအနက်') }} {{ $rooms->count() }} {{ __('ခန်း ပြထားသည်') }}</span>
     <a class="btn secondary" href="{{ route('rooms.all', request()->only('floor_id', 'status')) }}">{{ __('အခန်းအားလုံး ကြည့်ရန်') }}</a>
@@ -46,4 +47,5 @@
     </form>
 </section>
 @endif
+</div>
 @endsection

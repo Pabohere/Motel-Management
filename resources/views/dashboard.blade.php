@@ -1,10 +1,7 @@
 @extends('layouts.app')
 @section('title', __('အနှစ်ချုပ်'))
 @section('content')
-<div class="page-heading dashboard-heading">
-    <div><span class="eyebrow">MOTEL / OVERVIEW</span><h1>{{ __('မိုတယ် အနှစ်ချုပ်') }}</h1><p class="muted">{{ __('သင့်မိုတယ်ရဲ့ နေ့စဉ်လုပ်ငန်းခွင်၊ တစ်နေရာတည်းမှာ။') }}</p></div>
-    <span class="live-pill"><span class="dot"></span> {{ now()->format('d M Y') }} · {{ __('လက်ရှိအခြေအနေ') }}</span>
-</div>
+@include('rooms.summary', ['summaryRooms' => $rooms])
 <div class="dashboard-top">
     <section class="glass-panel room-map-panel" aria-labelledby="room-map-heading">
         <div class="glass-inner">
@@ -23,32 +20,24 @@
                     <div class="floor-heading"><h3>{{ $floor }} {{ __('ထပ်') }}</h3><span>{{ $floorRooms->count() }} {{ __('ခန်း') }}</span></div>
                     <div class="floor-room-grid">
                     @foreach($floorRooms as $room)
-                        <a class="room-tile {{ $room->status }}" data-room-status="{{ $room->status }}"
-                           href="{{ $room->activeStay ? route('stays.show', $room->activeStay) : ($room->status === 'available' ? route('stays.create', ['room'=>$room->id]) : route('rooms.index', ['status'=>$room->status])) }}"
-                           title="{{ __('အထပ်') }} {{ $floor }} · {{ __('အခန်း') }} {{ $room->number }} · {{ __(\App\Models\Room::STATUSES[$room->status]) }}{{ $room->activeStay ? ' · '.$room->activeStay->guest_name : '' }}{{ $room->nextReservation ? ' · Booking '.$room->nextReservation->arrival_at->format('d M H:i') : '' }}"
-                           aria-label="{{ __('အထပ်') }} {{ $floor }}၊ {{ __('အခန်း') }} {{ $room->number }}၊ {{ __(\App\Models\Room::STATUSES[$room->status]) }}">
-                            <span class="tile-indicator"></span><strong>{{ $room->number }}</strong><small>{{ $room->roomType->name }}</small>@if($room->nextReservation)<small class="tile-booked">{{ __('Booking') }} · {{ $room->nextReservation->arrival_at->format('d M') }}</small>@endif
-                        </a>
+                        @include('rooms.card', ['dashboardCard' => true])
                     @endforeach
                     </div>
                 </section>
                 @empty<div class="map-empty">{{ __('အခန်းမရှိသေးပါ။') }} <a href="{{ route('rooms.index') }}">{{ __('အခန်းထည့်ရန်') }}</a></div>@endforelse
                 <p class="map-empty" id="room-map-empty" hidden>{{ __('ရွေးထားသော အထပ်နှင့်အခြေအနေအတွက် အခန်းမရှိပါ။') }}</p>
             </div>
-            <div class="map-legend">@foreach(\App\Models\Room::STATUSES as $status=>$label)<span><i class="legend-dot {{ $status }}"></i>{{ __($label) }} <b>{{ $counts[$status] ?? 0 }}</b></span>@endforeach</div>
+            <div class="map-legend">@foreach(\App\Models\Room::STATUSES as $status=>$label)<span><i class="legend-dot {{ $status }}"></i>{{ __($label) }} <b>{{ $counts[$status] ?? 0 }}</b></span>@endforeach<span><i class="legend-dot booked"></i>{{ __('Booking') }} <b>{{ $rooms->filter(fn ($room) => $room->nextReservation && ! $room->activeStay)->count() }}</b></span></div>
             <div class="map-footnote"><span>{{ __('အခန်းကိုနှိပ်ပြီး ဧည့်သည်ကြည့် / Check-in လုပ်နိုင်ပါတယ်။') }}</span><div class="record-actions"><a href="{{ route('reservations.index') }}">{{ __('Booking စာရင်း') }}</a><a href="{{ route('rooms.index') }}">{{ __('အခန်းများ') }}</a></div></div>
         </div>
     </section>
-    <section class="glass-panel summary-panel" aria-labelledby="summary-heading">
-        <div class="glass-inner"><div class="panel-toolbar"><h2 id="summary-heading">{{ __('ယနေ့အနှစ်ချုပ်') }}</h2><span class="mini-date">@include('icon', ['name'=>'calendar']) {{ now()->format('d M') }}</span></div>
-            <div class="summary-grid">
-                <a class="summary-card mint" href="{{ route('rooms.index', ['status'=>'occupied']) }}"><span class="metric-icon">@include('icon', ['name'=>'home'])</span><strong>{{ $counts['occupied'] ?? 0 }}<small> / {{ $rooms->count() }}</small></strong><span>{{ __('ဧည့်သည်ရှိသောအခန်း') }}</span></a>
-                <a class="summary-card lavender" href="{{ route('reports.daily') }}"><span class="metric-icon">@include('icon', ['name'=>'users'])</span><strong>{{ $checkIns }}<small> {{ __('ဦး') }}</small></strong><span>{{ __('ယနေ့ Check-in') }}</span></a>
-                <a class="summary-card rose" href="{{ route('reports.daily') }}"><span class="metric-icon">@include('icon', ['name'=>'clock'])</span><strong>{{ $checkOuts }}<small> {{ __('ဦး') }}</small></strong><span>{{ __('ယနေ့ Check-out') }}</span></a>
-                <a class="summary-card peach" href="{{ route('reports.daily') }}"><span class="metric-icon">@include('icon', ['name'=>'wallet'])</span><strong class="money-metric">{{ number_format($received) }}<small> MMK</small></strong><span>{{ __('ယနေ့ လက်ခံရရှိငွေ') }}</span></a>
-            </div>
-        </div>
-    </section>
+
+</div>
+<div class="daily-strip">
+    <div><span>{{ __('ယနေ့ Check-in') }}</span><strong>{{ $checkIns }}</strong></div>
+    <div><span>{{ __('ယနေ့ Check-out') }}</span><strong>{{ $checkOuts }}</strong></div>
+    <div><span>{{ __('ယနေ့ လက်ခံရရှိငွေ') }}</span><strong>{{ number_format($received) }} <small>MMK</small></strong></div>
+    <a href="{{ route('reports.daily') }}">{{ __('နေ့စဉ်စာရင်း') }} →</a>
 </div>
 @if($rooms->where('status','dirty')->isNotEmpty())
 <div class="cleaning-bar"><span>@include('icon', ['name'=>'check']) {{ __('သန့်ရှင်းရေးပြီးသောအခန်း') }}</span><div>@foreach($rooms->where('status','dirty') as $room)<form method="post" action="{{ route('rooms.status',$room) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="available"><button class="clean-room-button">{{ $room->number }} · {{ __('အခန်းသန့်ပြီး') }} ✓</button></form>@endforeach</div></div>

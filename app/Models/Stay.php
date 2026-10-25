@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -44,14 +46,26 @@ class Stay extends Model
         return $this->hasMany(StayIdentityDocument::class)->orderBy('id');
     }
 
+    /** Load balance totals without hydrating the payment and charge histories. */
+    public function scopeWithFinancialTotals(Builder $query, ?CarbonInterface $asOf = null): Builder
+    {
+        return $query
+            ->withSum(['charges' => fn (Builder $charges) => $charges->when($asOf, fn (Builder $charges) => $charges->where('created_at', '<=', $asOf))], 'amount')
+            ->withSum(['payments' => fn (Builder $payments) => $payments->when($asOf, fn (Builder $payments) => $payments->where('created_at', '<=', $asOf))], 'amount');
+    }
+
     public function getTotalAttribute(): int
     {
-        return $this->room_charge + (int) $this->charges->sum('amount');
+        return $this->room_charge + (int) ($this->relationLoaded('charges') || ! array_key_exists('charges_sum_amount', $this->attributes)
+            ? $this->charges->sum('amount')
+            : $this->attributes['charges_sum_amount']);
     }
 
     public function getPaidAttribute(): int
     {
-        return (int) $this->payments->sum('amount');
+        return (int) ($this->relationLoaded('payments') || ! array_key_exists('payments_sum_amount', $this->attributes)
+            ? $this->payments->sum('amount')
+            : $this->attributes['payments_sum_amount']);
     }
 
     public function getBalanceAttribute(): int
