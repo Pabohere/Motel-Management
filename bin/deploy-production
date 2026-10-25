@@ -39,7 +39,9 @@ file_put_contents(getenv('MOTEL_RELEASE_BACKUP').'/record-counts.json', json_enc
 echo "Consistent database backup created.\n";
 PHP
 tar -czf "$backup/uploads.tar.gz" storage/app
+umask 022
 git merge --ff-only "$release"
+git ls-files -z public | xargs -0 chmod a+r
 php "$HOME/composer.phar" install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 php artisan optimize:clear --no-interaction
 php artisan migrate --force --no-interaction
