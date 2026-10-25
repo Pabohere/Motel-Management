@@ -7,7 +7,6 @@ use App\Models\Room;
 use App\Models\RoomType;
 use App\Services\Audit;
 use App\Services\FrontDesk;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -42,9 +41,6 @@ class RoomController extends Controller
         $totalRooms = $rooms->count();
         $floorNumbers = $floors->pluck('number', 'id');
         $floorRoomCounts = $rooms->countBy(fn (Room $room) => $floorNumbers[$room->floor_id]);
-        $rooms = new Collection($rooms->groupBy('floor_id')
-            ->flatMap(fn ($floorRooms) => $floorRooms->take(6))
-            ->values()->all());
         $rooms->load(['activeStay', 'floor', 'roomType', 'nextReservation']);
         $roomTypes = RoomType::orderBy('name')->get();
 

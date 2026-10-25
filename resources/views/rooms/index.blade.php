@@ -5,10 +5,6 @@
 <div class="page-heading"><div><h1>{{ __('အခန်းများ') }}</h1><p class="muted">{{ __('အထပ်၊ အမျိုးအစားနှင့် အခန်းအခြေအနေများ') }}</p></div>@if(auth()->user()->isManager())<a class="btn" href="#room-setup">{{ __('+ အခန်းစီမံရန်') }}</a>@endif</div>
 @include('rooms.filters', ['action' => route('rooms.index')])
 @include('rooms.cards', ['roomDisplay' => 'grid'])
-<div class="room-view-all">
-    <span class="muted">{{ $totalRooms }} {{ __('ခန်းအနက်') }} {{ $rooms->count() }} {{ __('ခန်း ပြထားသည်') }}</span>
-    <a class="btn secondary" href="{{ route('rooms.all', request()->only('floor_id', 'status')) }}">{{ __('အခန်းအားလုံး ကြည့်ရန်') }}</a>
-</div>
 @if(auth()->user()->isManager() && request('status') !== 'archived')
 <div class="room-setup-grid top-space" id="room-setup">
     <section class="panel setup-card"><h2>{{ __('အထပ် ဖန်တီးရန်') }}</h2><p class="muted setup-description">{{ __('အခန်းမထည့်မီ အထပ်ကို အရင်သတ်မှတ်ပါ။') }}</p>

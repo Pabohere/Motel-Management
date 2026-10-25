@@ -533,7 +533,7 @@ class MotelWorkflowTest extends TestCase
         $this->post(route('reservations.check-in', $reservation))->assertSessionHasErrors('operation');
     }
 
-    public function test_rooms_preview_links_to_all_rooms_grouped_by_floor(): void
+    public function test_rooms_index_and_all_rooms_show_every_room_grouped_by_floor(): void
     {
         $this->actingAs($this->staff);
         foreach (range(102, 110) as $number) {
@@ -545,10 +545,10 @@ class MotelWorkflowTest extends TestCase
             'room_type_id' => $this->room->room_type_id, 'rate' => 45000]);
 
         $this->get(route('rooms.index'))->assertOk()
-            ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 7 && $rooms->pluck('number')->contains('201'))
+            ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 11 && $rooms->pluck('number')->contains('201'))
             ->assertSee('2 ထပ်')
-            ->assertSee('6 / 10 ခန်း')
-            ->assertSee(route('rooms.all'), false);
+            ->assertSee('10 ခန်း')
+            ->assertSee('110');
         $this->get(route('rooms.all'))->assertOk()
             ->assertViewHas('rooms', fn ($rooms) => $rooms->count() === 11)
             ->assertSee('room-floor--grid')
