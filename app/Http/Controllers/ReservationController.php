@@ -18,9 +18,10 @@ class ReservationController extends Controller
 {
     public function index(Request $request): View
     {
-        $data = $request->validate(['status' => ['nullable', Rule::in(['booked', 'checked_in', 'cancelled'])]]);
+        $data = $request->validate(['status' => ['nullable', Rule::in(['booked', 'checked_in', 'cancelled'])], 'today' => ['nullable', 'boolean']]);
         $reservations = Reservation::with(['room.floor', 'room.roomType', 'stay'])
             ->when($data['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($data['today'] ?? false, fn ($query) => $query->where('arrival_at', '>=', today())->where('arrival_at', '<', today()->addDay()))
             ->orderByRaw("CASE WHEN status = 'booked' THEN 0 ELSE 1 END")
             ->orderBy('arrival_at')->paginate(20)->withQueryString();
 

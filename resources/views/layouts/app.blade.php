@@ -31,7 +31,7 @@
 @endphp
 <div class="shell">
     <aside class="sidebar">
-        <a href="{{ route('dashboard') }}" class="brand profile-brand"><span class="avatar">{{ mb_substr(auth()->user()->name, 0, 1) }}</span><span>{{ auth()->user()->name }}<small>{{ auth()->user()->isManager() ? __('မန်နေဂျာ') : __('ဝန်ထမ်း') }}</small></span><span class="profile-chevron" aria-hidden="true">⌄</span></a>
+        <a href="{{ route('dashboard') }}" class="brand profile-brand"><span class="avatar">{{ mb_substr(auth()->user()->name, 0, 1) }}</span><span>{{ auth()->user()->name }}<small>{{ auth()->user()->isManager() ? __('မန်နေဂျာ') : __('ဝန်ထမ်း') }}</small></span></a>
         <p class="nav-label">{{ __('လုပ်ငန်းဆောင်ရွက်မှု') }}</p>
         <nav aria-label="{{ __('အဓိကမီနူး') }}">
             @foreach($navigation as $route => $item)

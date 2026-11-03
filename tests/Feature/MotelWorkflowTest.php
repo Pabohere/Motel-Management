@@ -543,7 +543,7 @@ class MotelWorkflowTest extends TestCase
     public function test_reservation_blocks_overlaps_and_converts_to_a_stay_on_check_in(): void
     {
         $this->actingAs($this->staff);
-        $this->get(route('reservations.create'))->assertOk()->assertSee('အကြို Booking');
+        $this->get(route('reservations.create'))->assertOk()->assertSee(__('အကြို Booking'));
         $booking = ['room_id' => $this->room->id, 'guest_name' => 'Booked Guest', 'gender' => 'female', 'phone' => '09123456789',
             'arrival_at' => now()->addDay()->toDateTimeString(), 'departure_at' => now()->addDays(2)->toDateTimeString(), 'room_charge' => 35000];
         $this->post(route('reservations.store'), $booking)->assertSessionHasNoErrors();

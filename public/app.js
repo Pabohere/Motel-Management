@@ -33,19 +33,54 @@ checkIn?.addEventListener('input', updateCheckoutMinimum);
 checkIn?.addEventListener('change', updateCheckoutMinimum);
 updateCheckoutMinimum();
 
-function calculateRate() {
+const priceSummary = document.getElementById('price-summary');
+const deposit = document.querySelector('input[name="deposit"]');
+let manualCharge = charge?.dataset.manual === 'true';
+function roomQuote() {
   const rate = Number(room?.selectedOptions[0]?.dataset.rate);
-  const arrival = checkIn?.value.slice(0,10);
-  const departure = checkOut?.value.slice(0,10);
-  if (!Number.isFinite(rate) || !arrival || !departure) return;
-  const nights = Math.max(1, Math.round((Date.parse(departure)-Date.parse(arrival))/86400000));
-  charge.value = rate * nights;
+  const arrival = checkIn?.value;
+  const departure = checkOut?.value;
+  if (!Number.isFinite(rate) || !arrival || !departure || !checkIn.validity.valid || !checkOut.validity.valid) return null;
+  if (Date.parse(`${departure}Z`) <= Date.parse(`${arrival}Z`)) return null;
+  const nights = Math.max(1, Math.round((Date.parse(departure.slice(0, 10)) - Date.parse(arrival.slice(0, 10))) / 86400000));
+  return { rate, nights, total: rate * nights };
 }
-room?.addEventListener('change', calculateRate);
+function refreshPricing(recalculate = false) {
+  if (!charge) return;
+  const quote = roomQuote();
+  if (quote && recalculate && !manualCharge) charge.value = quote.total;
+  if (!priceSummary) return;
+  const number = new Intl.NumberFormat(document.documentElement.lang === 'my' ? 'my-MM' : 'en');
+  const write = (id, value) => { const output = document.getElementById(id); if (output) output.textContent = value; };
+  const amount = charge.valueAsNumber;
+  const paid = deposit ? deposit.valueAsNumber : 0;
+  write('quote-rate', quote ? number.format(quote.rate) : '—');
+  write('quote-nights', quote ? number.format(quote.nights) : '—');
+  write('quote-total', quote ? number.format(quote.total) : '—');
+  write('quote-charge', Number.isFinite(amount) ? number.format(amount) : '—');
+  write('quote-paid', Number.isFinite(paid) ? number.format(paid) : '—');
+  write('quote-balance', Number.isFinite(amount) && Number.isFinite(paid) ? number.format(amount - paid) : '—');
+  document.getElementById('quote-override').hidden = !manualCharge;
+  document.getElementById('quote-invalid').hidden = !!quote;
+  if (deposit && Number.isFinite(amount)) deposit.max = Math.max(0, amount);
+}
+function calculateRate() {
+  manualCharge = false;
+  refreshPricing(true);
+}
+room?.addEventListener('change', () => refreshPricing(true));
+checkIn?.addEventListener('input', () => refreshPricing(true));
+checkIn?.addEventListener('change', () => refreshPricing(true));
+checkOut?.addEventListener('input', () => refreshPricing(true));
+checkOut?.addEventListener('change', () => refreshPricing(true));
+charge?.addEventListener('input', () => { manualCharge = true; refreshPricing(); });
+deposit?.addEventListener('input', () => refreshPricing());
 document.getElementById('calculate-rate')?.addEventListener('click', calculateRate);
+refreshPricing(!manualCharge);
 
 // Dashboard filters only affect the visible view; records stay on the server.
 const roomMapFilter = document.getElementById('room-map-filter');
+const roomNumberSearch = document.getElementById('room-number-search');
 const floorChoices = Array.from(document.querySelectorAll('[data-floor-filter]'));
 function filterRoomMap() {
   let visibleRooms = 0;
@@ -53,7 +88,8 @@ function filterRoomMap() {
   document.querySelectorAll('[data-floor-group]').forEach(group => {
     let visibleOnFloor = 0;
     group.querySelectorAll('[data-room-status]').forEach(tile => {
-      tile.hidden = roomMapFilter.value !== 'all' && tile.dataset.roomStatus !== roomMapFilter.value;
+      tile.hidden = (roomMapFilter.value !== 'all' && tile.dataset.roomStatus !== roomMapFilter.value)
+        || (roomNumberSearch && !tile.dataset.roomNumber.toLocaleLowerCase().includes(roomNumberSearch.value.trim().toLocaleLowerCase()));
       if (!tile.hidden) visibleOnFloor += 1;
     });
     group.hidden = (selectedFloor !== 'all' && group.dataset.floorGroup !== selectedFloor) || visibleOnFloor === 0;
@@ -62,6 +98,7 @@ function filterRoomMap() {
   document.getElementById('room-map-empty').hidden = visibleRooms > 0;
 }
 roomMapFilter?.addEventListener('change', filterRoomMap);
+roomNumberSearch?.addEventListener('input', filterRoomMap);
 floorChoices.forEach(choice => choice.addEventListener('click', () => {
   floorChoices.forEach(item => {
     const active = item === choice;

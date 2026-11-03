@@ -2,7 +2,7 @@
 @section('title', __('အခန်းအသေးစိတ်'))
 @section('content')
 <div class="page-heading">
-    <div><span class="eyebrow">{{ $room->floor->number }} {{ __('ထပ်') }} · {{ $room->roomType->name }}</span><h1>{{ __('အခန်း') }} {{ $room->number }}</h1><p class="muted">{{ number_format($room->rate) }} MMK / {{ __('ည') }} · {{ $room->trashed() ? __('Archive ထဲတွင်ရှိ') : __(\App\Models\Room::STATUSES[$room->status]) }}</p></div>
+    <div><span class="eyebrow">{{ $room->floor->number }} {{ __('ထပ်') }} · {{ __($room->roomType->name) }}</span><h1>{{ __('အခန်း') }} {{ $room->number }}</h1><p class="muted">{{ number_format($room->rate) }} MMK / {{ __('ည') }} · {{ $room->trashed() ? __('Archive ထဲတွင်ရှိ') : __(\App\Models\Room::STATUSES[$room->status]) }}</p></div>
     <a href="{{ route('rooms.index') }}">{{ __('← အခန်းများ') }}</a>
 </div>
 <div class="record-actions">

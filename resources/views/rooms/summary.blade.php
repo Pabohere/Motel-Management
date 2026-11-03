@@ -17,12 +17,11 @@
                 <span class="metric-label">{{ $metric['label'] }}</span>
                 <div class="metric-value"><strong>{{ $metric['value'] }}</strong><span>@include('icon', ['name' => $metric['icon']])</span></div>
                 <small>{{ $metric['note'] }}</small>
-                <span class="metric-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
             </a>
         @endforeach
     </div>
-    <div class="type-overview">
-        <h2>{{ __('အခန်းအသုံးပြုမှု') }}</h2>
+    <details class="type-overview">
+        <summary>{{ __('အခန်းအသုံးပြုမှု') }} · {{ $occupancy }}%</summary>
         <div class="type-overview-body">
             <div class="occupancy-chart" style="--occupancy: {{ $occupancy }}"><span><strong>{{ $occupancy }}<small>%</small></strong><small>{{ __('ဧည့်သည်ရှိ') }}</small></span></div>
             <div class="type-percentages">
@@ -33,5 +32,5 @@
                 @endforelse
             </div>
         </div>
-    </div>
+    </details>
 </section>

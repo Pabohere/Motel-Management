@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
+use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\Stay;
 
@@ -21,6 +22,10 @@ class DashboardController extends Controller
         $received = Payment::where('created_at', '>=', $start)->where('created_at', '<', $end)->sum('amount');
         $activeStays = Stay::with('room')->withFinancialTotals()->whereNull('check_out_at')->orderByDesc('check_in_at')->orderByDesc('id')->get();
 
-        return view('dashboard', compact('rooms', 'floors', 'counts', 'checkIns', 'checkOuts', 'received', 'activeStays'));
+        $arrivals = Reservation::where('status', 'booked')->where('arrival_at', '>=', $start)->where('arrival_at', '<', $end)->count();
+        $departures = $activeStays->filter(fn (Stay $stay): bool => $stay->expected_check_out_at->gte(now()) && $stay->expected_check_out_at->lt($end))->count();
+        $overdue = $activeStays->filter(fn (Stay $stay): bool => $stay->expected_check_out_at->lt(now()))->count();
+
+        return view('dashboard', compact('rooms', 'floors', 'counts', 'checkIns', 'checkOuts', 'received', 'activeStays', 'arrivals', 'departures', 'overdue'));
     }
 }

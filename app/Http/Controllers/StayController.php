@@ -21,16 +21,18 @@ class StayController extends Controller
 {
     public function index(Request $request)
     {
-        $data = $request->validate(['q' => 'nullable|string|max:100', 'status' => ['nullable', Rule::in(['active', 'completed', 'archived'])], 'source' => ['nullable', Rule::in(['walk_in', 'booking'])]]);
+        $data = $request->validate(['q' => 'nullable|string|max:100', 'status' => ['nullable', Rule::in(['active', 'completed', 'archived'])], 'source' => ['nullable', Rule::in(['walk_in', 'booking'])], 'attention' => ['nullable', Rule::in(['departures', 'overdue'])]]);
         if (($data['status'] ?? null) === 'archived' && ! $request->user()->isManager()) {
             abort(403);
         }
         $stays = Stay::with(['room', 'identityDocuments'])->withFinancialTotals()
             ->when(($data['status'] ?? '') === 'archived', fn ($q) => $q->onlyTrashed())
-            ->when($data['q'] ?? null, fn ($q, $term) => $q->where(fn ($q) => $q->where('guest_name', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%')))
+            ->when($data['q'] ?? null, fn ($q, $term) => $q->where(fn ($q) => $q->where('guest_name', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%')->orWhereHas('room', fn ($room) => $room->where('number', 'like', '%'.$term.'%'))))
             ->when($data['source'] ?? null, fn ($q, $source) => $q->where('source', $source))
             ->when(($data['status'] ?? '') === 'active', fn ($q) => $q->whereNull('check_out_at'))
             ->when(($data['status'] ?? '') === 'completed', fn ($q) => $q->whereNotNull('check_out_at'))
+            ->when(($data['attention'] ?? '') === 'departures', fn ($q) => $q->whereNull('check_out_at')->where('expected_check_out_at', '>=', now())->where('expected_check_out_at', '<', today()->addDay()))
+            ->when(($data['attention'] ?? '') === 'overdue', fn ($q) => $q->whereNull('check_out_at')->where('expected_check_out_at', '<', now()))
             ->latest('check_in_at')->paginate(20)->withQueryString();
 
         return view('stays.index', compact('stays'));

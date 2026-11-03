@@ -2,12 +2,25 @@
 @section('title', __('အနှစ်ချုပ်'))
 @section('content')
 <h1 class="sr-only">{{ __('အနှစ်ချုပ်') }}</h1>
+<section class="frontdesk-tools" aria-label="{{ __('Front desk') }}">
+    <div class="quick-actions"><a class="btn" href="{{ route('stays.create') }}">+ {{ __('Check-in') }}</a><a class="btn secondary" href="{{ route('reservations.create') }}">{{ __('New reservation') }}</a></div>
+    <form class="quick-search" method="get" action="{{ route('stays.index') }}"><label class="sr-only" for="quick-guest-search">{{ __('Find guest or room') }}</label><input id="quick-guest-search" name="q" type="search" maxlength="100" placeholder="{{ __('Name, phone or room number') }}"><button class="btn secondary">{{ __('ရှာမည်') }}</button></form>
+</section>
+<section class="attention-panel" aria-labelledby="attention-heading">
+    <h2 id="attention-heading">{{ __('Needs attention') }}</h2>
+    <div class="attention-grid">
+        <a href="{{ route('reservations.index', ['status' => 'booked', 'today' => 1]) }}"><strong>{{ $arrivals }}</strong><span>{{ __('Arrivals today') }}</span></a>
+        <a href="{{ route('stays.index', ['status' => 'active', 'attention' => 'departures']) }}"><strong>{{ $departures }}</strong><span>{{ __('Departures remaining today') }}</span></a>
+        <a href="{{ route('stays.index', ['status' => 'active', 'attention' => 'overdue']) }}" @if($overdue) class="attention-warning" @endif><strong>{{ $overdue }}</strong><span>{{ __('Overdue checkouts') }}</span></a>
+        <a href="{{ route('rooms.index', ['status' => 'dirty']) }}"><strong>{{ $counts['dirty'] ?? 0 }}</strong><span>{{ __('Rooms to clean') }}</span></a>
+    </div>
+</section>
 @include('rooms.summary', ['summaryRooms' => $rooms])
 <div class="dashboard-top">
     <section class="glass-panel room-map-panel" aria-labelledby="room-map-heading">
         <div class="glass-inner">
             <div class="panel-toolbar"><div class="panel-title"><span class="title-icon">@include('icon', ['name'=>'grid'])</span><h2 id="room-map-heading">{{ __('အခန်းအခြေအနေ') }}</h2><span class="count-pill">{{ $rooms->count() }}</span></div>
-                <div class="map-filter">@include('icon', ['name'=>'filter'])<select id="room-map-filter" aria-label="{{ __('အခန်းအခြေအနေ စစ်ရန်') }}"><option value="all">{{ __('အားလုံး') }}</option>@foreach(\App\Models\Room::STATUSES as $status=>$label)<option value="{{ $status }}">{{ __($label) }}</option>@endforeach</select></div>
+                <label class="room-number-search"><span class="sr-only">{{ __('Find room') }}</span><input id="room-number-search" type="search" placeholder="{{ __('Room number') }}" maxlength="30"></label><div class="map-filter">@include('icon', ['name'=>'filter'])<select id="room-map-filter" aria-label="{{ __('အခန်းအခြေအနေ စစ်ရန်') }}"><option value="all">{{ __('အားလုံး') }}</option>@foreach(\App\Models\Room::STATUSES as $status=>$label)<option value="{{ $status }}">{{ __($label) }}</option>@endforeach</select></div>
             </div>
             <div class="floor-switch" role="group" aria-label="{{ __('အထပ်ရွေးရန်') }}">
                 <button type="button" class="floor-choice active" data-floor-filter="all" aria-pressed="true">{{ __('အထပ်အားလုံး') }}</button>
@@ -29,7 +42,7 @@
                 <p class="map-empty" id="room-map-empty" hidden>{{ __('ရွေးထားသော အထပ်နှင့်အခြေအနေအတွက် အခန်းမရှိပါ။') }}</p>
             </div>
             <div class="map-legend">@foreach(\App\Models\Room::STATUSES as $status=>$label)<span><i class="legend-dot {{ $status }}"></i>{{ __($label) }} <b>{{ $counts[$status] ?? 0 }}</b></span>@endforeach<span><i class="legend-dot booked"></i>{{ __('Booking') }} <b>{{ $rooms->filter(fn ($room) => $room->nextReservation && ! $room->activeStay)->count() }}</b></span></div>
-            <div class="map-footnote"><span>{{ __('အခန်းကိုနှိပ်ပြီး ဧည့်သည်ကြည့် / Check-in လုပ်နိုင်ပါတယ်။') }}</span><div class="record-actions"><a href="{{ route('reservations.index') }}">{{ __('Booking စာရင်း') }}</a><a href="{{ route('rooms.index') }}">{{ __('အခန်းများ') }}</a></div></div>
+            <div class="map-footnote"><span>{{ __('Select a room for details. Use Check in to add a guest.') }}</span><div class="record-actions"><a href="{{ route('reservations.index') }}">{{ __('Booking စာရင်း') }}</a><a href="{{ route('rooms.index') }}">{{ __('အခန်းများ') }}</a></div></div>
         </div>
     </section>
 
