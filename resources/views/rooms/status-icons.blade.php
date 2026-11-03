@@ -16,7 +16,7 @@
             @elseif($room->nextReservation)
                 <a class="room-signal" href="{{ route('reservations.index') }}" aria-label="{{ __('Booking') }} · {{ $room->nextReservation->arrival_at->format('d M H:i') }}" title="{{ __('Booking စာရင်း') }}">@include('icon', ['name' => 'calendar'])</a>
             @elseif($room->status === 'available')
-                <a class="room-signal" href="{{ route('stays.create', ['room' => $room->id]) }}" aria-label="{{ __('အခန်း') }} {{ $room->number }} · Check-in" title="Check-in">@include('icon', ['name' => 'person-plus'])</a>
+                <a class="room-signal" href="{{ route('stays.create', ['room' => $room->id]) }}" aria-label="{{ __('အခန်း') }} {{ $room->number }} · {{ __('Check-in') }}" title="{{ __('Check-in') }}">@include('icon', ['name' => 'person-plus'])</a>
             @endif
         @endif
     @endif

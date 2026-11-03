@@ -1,6 +1,6 @@
 @font-face {
   font-family: "Motel Myanmar";
-  src: url("fonts/noto-sans-myanmar-variable.ttf") format("truetype");
+  src: url("fonts/noto-sans-myanmar-variable.woff2") format("woff2");
   font-style: normal;
   font-weight: 100 900;
   font-stretch: 62.5% 100%;
@@ -1059,4 +1059,14 @@ html[data-theme="dark"] .success { color: #cbf5eb; background: #164e4c; border-c
 @media print {
   body, html[data-theme="dark"] body { color: #172b4d; background: #fff !important; }
   .panel, .stat, .daily-strip { border-color: #cbd5e1 !important; }
+}
+
+/* Visible keyboard focus against both light and dark surfaces, including login. */
+:root { --focus-ring: #0863b1; }
+html[data-theme="dark"] { --focus-ring: #8bd5ff; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, summary:focus-visible, [tabindex]:focus-visible,
+.glass-search:focus-within {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
 }

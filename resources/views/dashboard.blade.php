@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', __('အနှစ်ချုပ်'))
 @section('content')
+<h1 class="sr-only">{{ __('အနှစ်ချုပ်') }}</h1>
 @include('rooms.summary', ['summaryRooms' => $rooms])
 <div class="dashboard-top">
     <section class="glass-panel room-map-panel" aria-labelledby="room-map-heading">

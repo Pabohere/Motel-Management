@@ -4,7 +4,7 @@
             <div class="room-status-identity"><span class="room-status-number">{{ $room->number }}</span><span class="room-status-floor">{{ $room->floor->number }} {{ __('ထပ်') }}</span></div>
             <span class="room-status-badge {{ $room->trashed() ? 'maintenance' : $room->status }}">{{ $room->trashed() ? 'Archive' : __(\App\Models\Room::STATUSES[$room->status]) }}</span>
         </div>
-        <p class="room-status-details"><span>{{ $room->roomType->name }}</span><span class="room-status-rate">{{ number_format($room->rate) }} K / {{ __('ည') }}</span></p>
+        <p class="room-status-details"><span>{{ __($room->roomType->name) }}</span><span class="room-status-rate">{{ number_format($room->rate) }} K / {{ __('ည') }}</span></p>
         <div class="room-status-guest">
             @if($room->trashed())<span class="muted">{{ __('ဤအခန်းကို archive ထဲသိမ်းထားသည်။') }}</span>
             @elseif($room->activeStay)<a href="{{ route('stays.show', $room->activeStay) }}" title="{{ $room->activeStay->guest_name }}">{{ $room->activeStay->guest_name }}</a><small>{{ __('ထွက်ရန်') }} {{ $room->activeStay->expected_check_out_at->format('d M · H:i') }}</small>
@@ -17,7 +17,7 @@
             @if($room->trashed())
                 @if(auth()->user()->isManager())<form method="post" action="{{ route('rooms.restore', $room) }}">@csrf<button class="btn secondary small">{{ __('ပြန်ယူမည်') }}</button></form>@endif
             @else
-                @if($room->status === 'available')<a class="btn secondary small" href="{{ route('stays.create', ['room' => $room->id]) }}">+ Check-in</a>
+                @if($room->status === 'available')<a class="btn secondary small" href="{{ route('stays.create', ['room' => $room->id]) }}">+ {{ __('Check-in') }}</a>
                 @elseif($room->status === 'dirty')<form method="post" action="{{ route('rooms.status', $room) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="available"><button class="btn small">{{ __('✓ အခန်းသန့်ပြီး') }}</button></form>
                 @endif
                 @if(auth()->user()->isManager())<a class="text-link" href="{{ route('rooms.edit', $room) }}">{{ __('ပြင်ရန်') }}</a>@endif

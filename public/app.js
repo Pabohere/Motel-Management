@@ -18,6 +18,21 @@ const room = document.getElementById('room-select');
 const checkIn = document.getElementById('check-in');
 const checkOut = document.getElementById('check-out');
 const charge = document.getElementById('room-charge');
+function updateCheckoutMinimum() {
+  if (!checkIn || !checkOut) return;
+  if (!checkIn.value || !checkIn.validity.valid) {
+    checkOut.removeAttribute('min');
+    return;
+  }
+  // Treat datetime-local as wall time, independent of the browser time zone/DST.
+  const nextMinute = new Date(`${checkIn.value}Z`);
+  nextMinute.setUTCMinutes(nextMinute.getUTCMinutes() + 1);
+  checkOut.min = nextMinute.toISOString().slice(0, 16);
+}
+checkIn?.addEventListener('input', updateCheckoutMinimum);
+checkIn?.addEventListener('change', updateCheckoutMinimum);
+updateCheckoutMinimum();
+
 function calculateRate() {
   const rate = Number(room?.selectedOptions[0]?.dataset.rate);
   const arrival = checkIn?.value.slice(0,10);

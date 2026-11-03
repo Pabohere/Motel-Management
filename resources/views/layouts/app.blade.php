@@ -3,7 +3,7 @@
 <head>
     <script>try { document.documentElement.dataset.theme = localStorage.getItem('motel-theme') === 'dark' ? 'dark' : 'light'; } catch (_) { document.documentElement.dataset.theme = 'light'; }</script>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <link rel="preload" href="{{ asset('fonts/noto-sans-myanmar-variable.ttf') }}" as="font" type="font/ttf" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/noto-sans-myanmar-variable.woff2') }}" as="font" type="font/woff2" crossorigin>
     <title>@yield('title') · Motel</title>
     <link rel="stylesheet" href="{{ asset('app.css') }}">
     <link rel="stylesheet" href="{{ asset('glass.css') }}?v={{ filemtime(public_path('glass.css')) }}">

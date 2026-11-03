@@ -17,7 +17,7 @@
     <div class="form-grid">
         <label>{{ __('အခန်း') }}<select name="room_id" id="room-select" required><option value="">{{ __('အခန်းရွေးပါ') }}</option>@foreach($rooms as $room)<option value="{{ $room->id }}" data-rate="{{ $room->rate }}" @selected(old('room_id', request('room')) == $room->id)>{{ $room->floor->number }} {{ __('ထပ်') }} · {{ $room->number }} · {{ $room->roomType->name }} · {{ number_format($room->rate) }} K / {{ __('ည') }}</option>@endforeach</select></label>
         <label>{{ __('ရောက်ရန်ချိန်') }}<input name="arrival_at" id="check-in" type="datetime-local" min="{{ now()->format('Y-m-d\TH:i') }}" value="{{ old('arrival_at', now()->addDay()->format('Y-m-d\TH:i')) }}" required></label>
-        <label>{{ __('ထွက်ရန် သတ်မှတ်ချိန်') }}<input name="departure_at" id="check-out" type="datetime-local" value="{{ old('departure_at', now()->addDays(2)->setTime(12, 0)->format('Y-m-d\TH:i')) }}" required></label>
+        <label>{{ __('ထွက်ရန် သတ်မှတ်ချိန်') }}<input name="departure_at" id="check-out" type="datetime-local" min="{{ now()->addDay()->addMinute()->format('Y-m-d\TH:i') }}" value="{{ old('departure_at', now()->addDays(2)->setTime(12, 0)->format('Y-m-d\TH:i')) }}" required></label>
         <label>{{ __('အခန်းခ စုစုပေါင်း (MMK)') }}<input name="room_charge" id="room-charge" type="number" min="0" max="100000000" value="{{ old('room_charge', 0) }}" required><button class="text-link" type="button" id="calculate-rate">{{ __('ညအရေအတွက်ဖြင့် တွက်ရန်') }}</button></label>
     </div>
     <label>{{ __('မှတ်ချက်') }}<textarea name="notes" maxlength="2000" rows="3">{{ old('notes') }}</textarea></label>

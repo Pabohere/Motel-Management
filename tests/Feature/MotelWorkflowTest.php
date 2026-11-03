@@ -510,6 +510,36 @@ class MotelWorkflowTest extends TestCase
         $this->assertDatabaseHas('room_types', ['id' => $this->room->room_type_id]);
     }
 
+    public function test_reservation_rejects_departure_before_or_equal_to_arrival_without_writing_records(): void
+    {
+        $this->actingAs($this->staff);
+        $arrival = now()->addDay();
+        $booking = ['room_id' => $this->room->id, 'guest_name' => 'Invalid chronology', 'gender' => 'female', 'phone' => '09123456789',
+            'arrival_at' => $arrival->format('Y-m-d\TH:i'), 'room_charge' => 35000];
+        foreach ([$arrival->copy()->subMinute(), $arrival] as $departure) {
+            $this->post(route('reservations.store'), [...$booking, 'departure_at' => $departure->format('Y-m-d\TH:i')])
+                ->assertSessionHasErrors('departure_at');
+        }
+        $this->assertDatabaseCount('reservations', 0);
+        $this->assertDatabaseCount('stays', 0);
+        $this->assertDatabaseCount('audit_logs', 0);
+        $this->assertSame('available', $this->room->fresh()->status);
+
+        $this->post(route('reservations.store'), [...$booking, 'departure_at' => $arrival->copy()->addMinute()->format('Y-m-d\TH:i')])
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('reservations', 1);
+    }
+
+    public function test_overview_localizes_standard_room_types_and_actions_in_myanmar(): void
+    {
+        $this->actingAs($this->staff)->withSession(['locale' => 'my'])->get(route('dashboard'))->assertOk()
+            ->assertSee('<h1 class="sr-only">အနှစ်ချုပ်</h1>', false)
+            ->assertSee('အမှောင်စနစ်')->assertSee('ပုံမှန်အခန်း')->assertSee('ဧည့်သည်ဝင်ရန်')
+            ->assertDontSee('Dark mode')->assertDontSee('Standard')->assertDontSee('+ Check-in');
+        $this->withSession(['locale' => 'en'])->get(route('dashboard'))->assertOk()
+            ->assertSee('<h1 class="sr-only">Overview</h1>', false)->assertSee('Dark mode')->assertSee('Standard');
+    }
+
     public function test_reservation_blocks_overlaps_and_converts_to_a_stay_on_check_in(): void
     {
         $this->actingAs($this->staff);

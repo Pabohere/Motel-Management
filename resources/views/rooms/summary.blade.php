@@ -27,7 +27,7 @@
             <div class="occupancy-chart" style="--occupancy: {{ $occupancy }}"><span><strong>{{ $occupancy }}<small>%</small></strong><small>{{ __('ဧည့်သည်ရှိ') }}</small></span></div>
             <div class="type-percentages">
                 @forelse($typeGroups as $typeName => $typeRooms)
-                    <div><span>{{ $typeName }}</span><strong>{{ round($typeRooms->where('status', 'occupied')->count() / $typeRooms->count() * 100) }}%</strong></div>
+                    <div><span>{{ __($typeName) }}</span><strong>{{ round($typeRooms->where('status', 'occupied')->count() / $typeRooms->count() * 100) }}%</strong></div>
                 @empty
                     <p class="muted">{{ __('အခန်းမရှိသေးပါ။') }}</p>
                 @endforelse

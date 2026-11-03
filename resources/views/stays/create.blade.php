@@ -18,7 +18,7 @@
     <div class="form-grid">
         <label>{{ __('အခန်း') }}<select name="room_id" id="room-select" required><option value="">{{ __('အခန်းရွေးပါ') }}</option>@foreach($rooms as $room)<option value="{{ $room->id }}" data-rate="{{ $room->rate }}" @selected(old('room_id', $selectedRoom?->id) == $room->id)>{{ $room->floor->number }} {{ __('ထပ်') }} · {{ $room->number }} · {{ $room->roomType->name }} · {{ number_format($room->rate) }} K / {{ __('ည') }}</option>@endforeach</select></label>
         <label>{{ __('ဝင်ချိန်') }}<input name="check_in_at" id="check-in" type="datetime-local" value="{{ old('check_in_at', now()->format('Y-m-d\TH:i')) }}" required></label>
-        <label>{{ __('ထွက်ရန် သတ်မှတ်ချိန်') }}<input name="expected_check_out_at" id="check-out" type="datetime-local" value="{{ old('expected_check_out_at', now()->addDay()->setTime(12, 0)->format('Y-m-d\TH:i')) }}" required></label>
+        <label>{{ __('ထွက်ရန် သတ်မှတ်ချိန်') }}<input name="expected_check_out_at" id="check-out" type="datetime-local" min="{{ now()->addMinute()->format('Y-m-d\TH:i') }}" value="{{ old('expected_check_out_at', now()->addDay()->setTime(12, 0)->format('Y-m-d\TH:i')) }}" required></label>
     </div>
     <h2 class="top-space">{{ __('ငွေစာရင်း') }}</h2>
     <p class="muted">{{ __('အခန်းခမှာ တည်းခိုမှုတစ်ခုလုံးအတွက် ဖြစ်ပါသည်။ နှုန်း × ညအရေအတွက် တွက်ပေးမည်။ မသိမ်းမီ စစ်ဆေး/ပြင်ဆင်နိုင်ပါသည်။') }}</p>
