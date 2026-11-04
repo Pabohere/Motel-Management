@@ -1,7 +1,11 @@
 <?php
 
+use App\Models\Reservation;
+use App\Models\Room;
+use App\Models\Stay;
 use App\Models\User;
 use App\Services\Audit;
+use Database\Seeders\DemoDataSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -51,6 +55,31 @@ Artisan::command('motel:prepare-demo', function () {
 
     return 0;
 })->purpose('Seed a disposable demo environment with an env-configured manager');
+
+Artisan::command('motel:seed-workflow-demo {--allow-production : Explicitly authorize sample business records on the live site}', function () {
+    if (app()->environment('production')) {
+        if (! $this->option('allow-production')) {
+            $this->error('Use --allow-production to explicitly authorize demo records in live business reports.');
+
+            return 1;
+        }
+        $directory = config('app.backup_directory') ?: dirname(base_path()).'/motel-backups';
+        if ($this->call('motel:backup', ['directory' => $directory]) !== 0) {
+            $this->error('Demo data was not added because the backup did not pass verification.');
+
+            return 1;
+        }
+    }
+    app(DemoDataSeeder::class)->seedWorkflow((bool) $this->option('allow-production'));
+    $this->info('DEMO WORKFLOW READY: sample records are labelled Demo. Existing business records are preserved.');
+    $this->table(['Record', 'Demo count'], [
+        ['Rooms', Room::whereHas('roomType', fn ($query) => $query->where('name', 'like', 'Demo %'))->count()],
+        ['Stays', Stay::where('phone', 'like', '099900%')->count()],
+        ['Reservations', Reservation::where('notes', 'like', 'DEMO-WORKFLOW:%')->count()],
+    ]);
+
+    return 0;
+})->purpose('Add repeatable workflow samples; production requires explicit authorization and a verified backup');
 
 if (config('app.backup_directory')) {
     Schedule::command('motel:backup', [config('app.backup_directory')])->dailyAt('03:00')->withoutOverlapping()->appendOutputTo(storage_path('logs/backup.log'));
