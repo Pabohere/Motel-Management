@@ -734,7 +734,7 @@ form:has(.field-error) input:invalid{border-color:#b42318}
   scroll-snap-type: x mandatory; scroll-padding-inline: 2px;
   padding: 14px 2px 18px; scrollbar-width: thin;
 }
-.room-floor--swipe .room-status-card { flex: 0 0 min(280px, 82vw); scroll-snap-align: start; }
+.room-floor--swipe .room-status-card { flex: 0 0 min(280px, calc(100% - 18px)); scroll-snap-align: start; }
 .room-floor--swipe .room-status-card[hidden] { display: none; }
 .room-status-card--compact .room-actions-menu { width: auto; margin-left: auto; }
 .room-status-card--compact .room-actions-menu > summary { justify-content: center; }
