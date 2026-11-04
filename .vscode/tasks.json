@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Motel: Setup local",
+      "type": "shell",
+      "command": "./bin/setup --sample-rooms",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Motel: Serve",
+      "type": "shell",
+      "command": "./bin/start",
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Motel: Create manager",
+      "type": "shell",
+      "command": "./bin/motel motel:create-manager",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Motel: Test",
+      "type": "shell",
+      "command": "./bin/motel test",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

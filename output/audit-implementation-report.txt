@@ -1,0 +1,225 @@
+MOTEL MANAGEMENT — IMPLEMENTATION, AUDIT AND RELEASE REPORT
+Date: 4 November 2026
+Candidate: local working tree based on df55a85 (previous live UI release).
+Assessment: READY FOR CONTROLLED UAT.
+This candidate has not been committed, pushed, or deployed. The production database was not migrated. Browser testing used a separate synthetic SQLite database at /tmp/motel-audit-uat/database.sqlite.
+
+1. FINAL CODE AUDIT
+
+Confirmed and fixed:
+- Missing/null payment terms now normalize to immediate before validation. The central service also requires full payment for immediate stays. Explicit credit permits a partial payment.
+- Check-in and stay extensions use a shared half-open reservation overlap rule. Adjacent checkout/arrival boundaries are accepted; overlapping extensions are rejected atomically.
+- Reservation states now include booked, checked_in, completed, cancelled and no_show. Checkout completes the linked booking. Duplicate check-in/checkout and invalid transitions are rejected. Expiration includes the exact departure-time boundary. Booked dates can be edited with conflict checks.
+- Later stay extension or checkout no longer rewrites prior-month revenue allocation when the earlier expected departure is available in audit history. Integer MMK calculations remain in place.
+- Payment retries with the same submission key create one ledger entry. Changed details under a reused key are rejected. Check-in retries similarly create one stay and one initial payment.
+- Manager-only partial/full payment reversals preserve originals, require reasons, link the original, and identify the operator/time. Excessive refunds and reversals of reversal entries are rejected. Corrections use a reversal followed by a replacement payment; original amount/method/reference cannot be silently edited or deleted.
+- Refunds appear as operating cash outflows, while positive receipts remain inflows. Guest balances use signed ledger sums.
+- Identity-document viewing and uploading have separate permissions. Existing staff retain their previous permissions during migration; new staff created through administration default to neither permission unless granted. Managers retain access by role. Changes are audited.
+- Identity and receipt access is logged with operator, entity, time and IP. Authenticated responses are private/no-store. Generic local-storage serving is disabled. Existing content-based MIME and upload size validation is retained.
+- Identity documents and receipts have NO automatic expiration or deletion. Only an explicit, confirmed manager action deletes a file; stay/payment records and deletion audit remain. Deleted identity records cannot be served even if physical cleanup fails. Storage failures are reported for manager follow-up.
+- Audit events sanitize password/token/secret/content fields recursively, are append-only through models, include IP, and can be searched by action/entity/operator/date. Database administrators still have database-level access; this is application-level protection, not tamper-proof external log storage.
+- Housekeeping now follows dirty -> cleaning -> cleaned -> inspected -> available. Staff start/finish cleaning; managers inspect/release rooms. Responsible employee and timestamps are preserved. Check-in requires available status. Maintenance rejects rooms with future bookings.
+
+Existing safeguards retained:
+- Manager-only staff administration, financial statements, expenses and room administration.
+- Disabled-account protections, session invalidation on disable/role changes, and last-active-manager protection.
+- Unique active room occupancy guard, soft archives, private uploads, historical financial exports, Myanmar/English support and network-only business submissions.
+
+Business interpretation:
+A payment refund/reversal changes the payment ledger and increases the outstanding balance; it does not reduce the contracted room charge. The UI explains this before confirmation. A commercial discount or cancellation credit is a separate pricing/accounting decision and is not silently inferred from a refund.
+No guest master records were merged by name or phone. A guest page provides a search for stays using the same phone; shared phone numbers must be reviewed by staff.
+
+2. CHANGE REPORT
+
+Phases completed in order with regression runs:
+1) Business validation, overlap rules, reservation lifecycle and historical accounting.
+2) Document access/deletion, ledger corrections, immutable audit and backup verification.
+3) Housekeeping, payment ledger, guest reference search and reservation editing.
+4) Navigation, dashboard, check-in sequence, inline feedback and responsive behavior.
+5) Regression tests, real SQLite process races, migration upgrade and backup restore checks, browser UAT and release documentation.
+
+Migration:
+database/migrations/2026_11_04_122141_add_operational_integrity_fields.php
+Adds signed payment amounts, reversal links, idempotency keys/fingerprints, references, document permissions, identity soft deletion, audit IP/indexes, housekeeping metadata and stay availability index. Backfills completed reservation states without deleting records. A populated legacy-schema upgrade test preserves financial/document/stay data. Rolling this migration down is refused when reversal entries exist; restore a complete backup instead.
+
+Architecture/performance:
+Shared RoomAvailability and SubmissionKey helpers centralize critical rules. Room/stay transitions lock room before stay. SQLite uses IMMEDIATE write transactions and a busy timeout. Balance list queries retain aggregate loading; dashboard outstanding balances aggregate in SQL. Related payment reversals/creators and room housekeeping employees are eager loaded where listed. No dependencies were added or changed.
+
+3. TESTING REPORT — ACTUAL EXECUTION
+
+Final backend command: ./bin/motel test --compact
+Result: 103 tests PASSED, 1,064 assertions, zero failures/errors (7.757 seconds).
+Baseline before this work: 82 tests / 878 assertions. Existing tests remain; fixtures and navigation assertions were updated to reflect explicit credit and inspected housekeeping requirements.
+
+Coverage includes:
+- Null/omitted/immediate/credit payment terms; overlap and extension boundaries; lifecycle and exact-time expiry; duplicate check-in/checkout; idempotent check-in and payment retries.
+- Manager reversal/replacement, over-refund rejection, staff denial and immutable original payments.
+- Private document access/upload permissions, access logs, manager deletion, inaccessible deleted documents, audit sanitization/search/immutability; existing unauthorized/disabled/MIME tests.
+- Actual separate PHP processes against file-backed SQLite: simultaneous reservations and check-ins each yield exactly one accepted operation and one rejected conflict. These are not sequential mocked calls.
+- Month-boundary accounting, historical edits, deposits, late payments, refunds, expenses and independent cash/receivable/ledger reconciliation. Existing capital, loan, assets, depreciation, opening balances and export tests also pass.
+- Housekeeping transitions, responsible employee and timestamps; guest/reference lookup, settings roles and validation feedback.
+- Populated legacy schema upgrade preserving records and balances.
+- Backup restored into a temporary directory, SQLite integrity/foreign keys/counts checked, hashes verified and referenced private uploads checked. Deliberately corrupted backup detected. This is a temporary restore drill, not a live production restore.
+- Production-preflight rejection of insecure configuration.
+
+JavaScript/PWA: 11 of 11 tests PASSED, executed with the bundled Node runtime and the existing test files in VM contexts. Pricing, manual overrides, payment defaults, checkout dates, browser-history button restoration, public-only precaching, private network responses and offline fallback are covered.
+Formatting: Laravel Pint passed.
+Templates: ./bin/motel view:cache succeeded for all Blade templates.
+Routes: inspected with route:list (the unsupported --compact flag was removed before successful inspection).
+Whitespace: git diff --check passed.
+
+Browser UAT (disposable local database):
+- Synthetic guest check-in completed on a 390px viewport; room rate calculated, Pay-now filled full payment, confirmation matched, and stay showed zero balance.
+- Checkout confirmation completed; room became dirty.
+- Start cleaning -> finish cleaning -> manager inspect -> mark ready completed; employee/times displayed and Check-in returned only after available state.
+- Mobile More -> Settings exposes manager administration; backend tests verify staff restrictions.
+- Payment form: changing 70,000 due to a proposed 10,000 payment immediately displays 60,000 remaining without saving.
+- 32 English layout checks: eight operational pages at widths 320, 390, 768, 1280.
+- 24 Myanmar layout checks: the same eight pages at 390, 412, and 896px landscape.
+- All 56 layout checks passed document-width overflow detection. Visible form/action buttons inspected at phone size were at least 44px high. Myanmar rendering and mobile room page were visually inspected.
+Evidence: output/audit-mobile.png and output/audit-desktop.png (synthetic data only).
+
+Not executed / not claimed:
+- Physical Android Chrome installation, physical iPhone Safari installation, camera/file-picker/keyboard/device behavior and installed-PWA lifecycle.
+- MySQL tests. Current production target is SQLite, as established by the previous live deployment. A switch to MySQL requires its own database/migration/concurrency runs.
+- A Vite build: rendered production pages use committed public CSS/JS directly rather than a Vite manifest. Those assets were exercised in the browser and JS tests; no dependency installation was required.
+- Candidate release on cPanel, live production preflight, live cron execution, off-host recovery or production rollback drill.
+
+4. UI/UX REPORT
+
+Main navigation is limited to Dashboard, Rooms, Guests, Reservations, Payments, Reports and Settings. Mobile retains four front-desk tabs plus More. Reports and Settings group less frequent tasks; manager administration remains accessible with role checks. Room setup is collapsed until requested.
+Dashboard shows arrivals, departures, overdue stays, cleaning, inspection queue and guest outstanding balances, with check-in/reservation/checkout/search shortcuts. Room cards expose the next valid housekeeping action.
+Check-in follows room/dates -> guest -> payment -> review/confirmation. Pricing and remaining balance update automatically; manual prices survive edits/validation. Immediate payment defaults to the full charge; switching to credit makes partial payment explicit. Relevant fields display server validation messages and old inputs are retained. Files must be selected again after a validation redirect, as required by browser security.
+Guest pages distinguish unpaid/partially paid/fully paid/refunded states, show the full financial ledger, provide same-phone stay search and manager stay-activity links, and keep private files separate. The Payments page searches guest/phone/room/stay/payment reference. Refund/correction controls are manager-only and collapsed until needed.
+Native dialogs are reserved for checkout, financial recording/reversals and deletions. Existing mobile safe-area, touch-size, theme, localization, PWA installation help and offline warnings are retained. Browser-history restoration no longer leaves submission-disabled buttons stuck.
+
+Remaining usability validation: a real receptionist should complete the UAT checklist on the actual front-desk devices. No claim of a user-training study or physical-device certification is made.
+
+5. PRODUCTION READINESS AND RELEASE PROCEDURE
+
+Remaining release gates:
+- Controlled UAT and actual Android/iPhone installed-PWA checks.
+- Run the new production preflight on cPanel after staging the release/environment and resolve every FAIL.
+- Configure and observe scheduled backups, protect backup storage and arrange an off-host copy. A repository scheduler definition alone does not prove cPanel cron runs.
+- Verify an actual hosting backup with motel:verify-backup, then perform a recovery drill in a separate staging directory/account.
+- Deploy this candidate deliberately; no branches or live files were changed by this implementation task.
+
+Backup automation:
+1. Create a private writable directory outside public and storage/app, e.g. /home/sancelno/motel-backups/daily.
+2. Set MOTEL_BACKUP_DIRECTORY to that absolute directory in the hosting .env, then refresh cached configuration through the normal deployment process.
+3. Configure cPanel cron every minute to run:
+   cd /home/sancelno/motel-app && php artisan schedule:run >> storage/logs/scheduler.log 2>&1
+   Use the same PHP 8.4 CLI that the existing deployment uses.
+4. The scheduler registers a daily 03:00 Asia/Yangon backup with overlap protection. Inspect storage/logs/backup.log and scheduler.log and confirm new backup directories appear.
+5. Manual backup:
+   php artisan motel:backup /home/sancelno/motel-backups/daily
+   This briefly enters maintenance, makes a consistent SQLite copy, copies uploads/environment, records hashes/counts, and verifies a temporary restoration. It restores the prior maintenance state.
+6. Verify an existing NEW-format backup:
+   php artisan motel:verify-backup /absolute/path/to/timestamp-backup
+   The command never replaces the running database. Legacy deployment backups use a different layout and do not have this manifest.
+7. Protect backup directories/files; environment backups contain secrets. No automatic deletion of uploads or backups is scheduled. Explicit file deletion affects current storage; historical backup copies require separate manager-controlled handling when fulfilling a deletion or restoration request.
+
+Preflight:
+   php artisan motel:production-check
+Checks production mode, debug/HTTPS/key/cookies, private-storage exposure/writability, pending migrations, SQLite integrity/foreign keys and backup directory configuration, without printing credentials. Cron execution, real HTTPS responses and off-host backups still require operational checks.
+
+Deployment after controlled UAT:
+- Commit only the reviewed application/report changes; preserve unrelated proposal/manual artifacts already present in the workspace.
+- Promote the tested commit to demo, test there with synthetic data, then fast-forward prod to that exact commit.
+- In cPanel, use the existing bin/deploy-production procedure. It backs up the pre-release database/uploads/environment/hosting settings, preserves the PHP handler, enters maintenance, updates prod, installs locked dependencies, migrates, optimizes and checks record counts.
+- Capture the deployed commit and backup location. Run production-check and a new-format backup/verification. Verify HTTPS login, secure cookies, private file access and front-desk workflows without creating fictitious live financial records.
+- Do not run migrate:fresh, db:seed or motel:prepare-demo against production.
+
+Rollback / recovery:
+- Enter maintenance and preserve a NEW snapshot of the current database/uploads before recovery, including any transactions since deployment. Restoring an older database loses later transactions unless reconciled.
+- Restore the exact matching source revision, locked dependencies, .env/encryption key, hosting .htaccess/php.ini, SQLite database and uploads from one consistent backup set. Keep file ownership/permissions correct and remove stale SQLite WAL/SHM only while every writer is stopped.
+- New command backups contain database.sqlite, uploads/ (contents of storage/app), environment and manifest.json. Existing deployment backups instead contain revision, hosting.patch, public.htaccess, optional public.php.ini, database.sqlite, environment, record-counts.json and uploads.tar.gz.
+- Perform restoration first in an isolated staging copy. For a new backup, verify with motel:verify-backup and inspect all reconciliations. Check DB integrity/foreign keys, expected record counts, referenced files and balances before releasing maintenance.
+- Do not simply reset code or drop reversal columns after reversals exist. A complete, reconciled recovery is required. Automatic live restore is intentionally not performed by the verification command.
+
+Manual UAT checklist:
+[ ] Missing/null/immediate partial payment rejected; credit partial payment accepted.
+[ ] Adjacent reservation allowed; overlapping booking or extension rejected.
+[ ] Early/late check-in, expired no-show, cancellation and completion behave correctly.
+[ ] A repeated submit creates one stay/payment; changed reused key is rejected.
+[ ] Manager reversal/replacement preserves original and reconciles balance/cash.
+[ ] Staff cannot reverse payments, alter roles, inspect/release rooms or open manager reports.
+[ ] Independently grant view/upload permissions and verify each restriction.
+[ ] Authorized private previews work; unauthorized requests fail and responses are no-store.
+[ ] Explicit file deletion removes access and records its operator without deleting the stay/payment.
+[ ] Dirty/cleaning/cleaned/inspected rooms reject check-in; ready rooms accept it.
+[ ] Search by name, phone, room, stay reference and payment reference.
+[ ] Review daily/monthly/export results against a known ledger and period-boundary example.
+[ ] Repeat check-in, payment, checkout and housekeeping on physical Android/iPhone/tablet.
+[ ] Install PWA, switch apps, reopen, test offline warning and reconnect before saving.
+[ ] Confirm backup cron, off-host copy and isolated restoration on hosting.
+
+6. FINAL ASSESSMENT
+
+READY FOR CONTROLLED UAT. The implementation and automated/local browser evidence support this level. Live hosting, physical devices, cron/off-host recovery and UAT sign-off have not been verified for this candidate, so production approval is not claimed.
+
+APPLICATION FILE INVENTORY (excludes existing proposal/manual artifacts)
+app/Console/Commands/BackupProduction.php
+app/Console/Commands/ProductionCheck.php
+app/Console/Commands/VerifyBackup.php
+app/Http/Controllers/AuditController.php
+app/Http/Controllers/DashboardController.php
+app/Http/Controllers/FinancialEntryController.php
+app/Http/Controllers/PaymentController.php
+app/Http/Controllers/ReservationController.php
+app/Http/Controllers/RoomController.php
+app/Http/Controllers/StayController.php
+app/Http/Controllers/UserController.php
+app/Http/Middleware/PrivateResponses.php
+app/Models/AuditLog.php
+app/Models/Payment.php
+app/Models/Room.php
+app/Models/StayIdentityDocument.php
+app/Models/User.php
+app/Services/Audit.php
+app/Services/FrontDesk.php
+app/Services/MonthlyFinancialStatements.php
+app/Services/RoomAvailability.php
+app/Services/SubmissionKey.php
+bootstrap/app.php
+config/app.php
+config/database.php
+config/filesystems.php
+database/migrations/2026_11_04_122141_add_operational_integrity_fields.php
+lang/my.json
+public/app.js
+public/reference.css
+resources/views/audit/index.blade.php
+resources/views/dashboard.blade.php
+resources/views/layouts/app.blade.php
+resources/views/payments/index.blade.php
+resources/views/reports/index.blade.php
+resources/views/reservations/create.blade.php
+resources/views/reservations/edit.blade.php
+resources/views/reservations/index.blade.php
+resources/views/rooms/card.blade.php
+resources/views/rooms/housekeeping-action.blade.php
+resources/views/rooms/index.blade.php
+resources/views/rooms/show.blade.php
+resources/views/settings.blade.php
+resources/views/stays/create.blade.php
+resources/views/stays/edit.blade.php
+resources/views/stays/identity-gallery.blade.php
+resources/views/stays/index.blade.php
+resources/views/stays/show.blade.php
+resources/views/users/index.blade.php
+routes/console.php
+routes/web.php
+tests/Feature/BackupRecoveryTest.php
+tests/Feature/BusinessIntegrityTest.php
+tests/Feature/ConcurrentOperationsTest.php
+tests/Feature/DocumentAccessTest.php
+tests/Feature/HistoricalAccountingTest.php
+tests/Feature/HousekeepingTest.php
+tests/Feature/MigrationSafetyTest.php
+tests/Feature/MobileNavigationTest.php
+tests/Feature/MotelWorkflowTest.php
+tests/Feature/OperationsInterfaceTest.php
+tests/Feature/PaymentCorrectionTest.php
+tests/Feature/ProductionCheckTest.php
+tests/frontend.test.cjs

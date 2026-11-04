@@ -1,0 +1,1 @@
+<button type="button" class="pwa-install-button" data-pwa-install aria-haspopup="dialog" aria-controls="pwa-install-dialog" hidden><span aria-hidden="true">↓</span> {{ __('App ထည့်သွင်းရန်') }}</button>

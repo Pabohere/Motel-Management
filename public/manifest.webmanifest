@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "Motel Management",
+  "short_name": "Motel",
+  "description": "Rooms, guests, staff and financial reports for your motel.",
+  "lang": "my",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#0b4f91",
+  "icons": [
+    { "src": "/icons/motel-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/motel-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/motel-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
