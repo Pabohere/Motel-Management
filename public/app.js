@@ -140,6 +140,11 @@ function filterRoomMap() {
     });
     group.hidden = (selectedFloor !== 'all' && group.dataset.floorGroup !== selectedFloor) || visibleOnFloor === 0;
     if (!group.hidden) visibleRooms += visibleOnFloor;
+    const rail = group.querySelector('.room-rail');
+    if (rail) {
+      rail.scrollLeft = 0;
+      rail.dispatchEvent(new Event('room-filtered'));
+    }
   });
   document.getElementById('room-map-empty').hidden = visibleRooms > 0;
 }
@@ -208,9 +213,10 @@ document.querySelectorAll('.room-floor').forEach(floor => {
     });
   };
   buttons.forEach(button => button.addEventListener('click', () => {
-    rail.scrollBy({left: Number(button.dataset.railScroll) * Math.max(280, rail.clientWidth * .75), behavior: 'smooth'});
+    rail.scrollBy({left: Number(button.dataset.railScroll) * Math.max(280, rail.clientWidth * .75), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
   }));
   rail.addEventListener('scroll', updateButtons, {passive: true});
+  rail.addEventListener('room-filtered', updateButtons);
   window.addEventListener('resize', updateButtons);
   updateButtons();
 });

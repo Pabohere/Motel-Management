@@ -32,11 +32,16 @@
             </div>
             <div class="room-map" id="room-map">
                 @forelse($floors as $floor=>$floorRooms)
-                <section class="floor-group" data-floor-group="{{ $floor }}" aria-label="{{ __('အထပ်') }} {{ $floor }} {{ __('အခန်းများ') }}">
-                    <div class="floor-heading"><h3>{{ $floor }} {{ __('ထပ်') }}</h3><span>{{ $floorRooms->count() }} {{ __('ခန်း') }}</span></div>
-                    <div class="floor-room-grid">
+                <section class="floor-group room-floor room-floor--swipe" data-floor-group="{{ $floor }}" aria-label="{{ __('အထပ်') }} {{ $floor }} {{ __('အခန်းများ') }}">
+                    <div class="floor-heading"><h3>{{ $floor }} {{ __('ထပ်') }} <span>{{ $floorRooms->count() }} {{ __('ခန်း') }}</span></h3>
+                        <div class="room-rail-controls">
+                            <button type="button" class="room-rail-button" data-rail-scroll="-1" aria-controls="floor-rail-{{ $floor }}" aria-label="{{ __('အခန်းများကို ဘယ်ဘက်သို့ ရွှေ့ရန်') }}">←</button>
+                            <button type="button" class="room-rail-button" data-rail-scroll="1" aria-controls="floor-rail-{{ $floor }}" aria-label="{{ __('အခန်းများကို ညာဘက်သို့ ရွှေ့ရန်') }}">→</button>
+                        </div>
+                    </div>
+                    <div class="room-rail" id="floor-rail-{{ $floor }}" tabindex="0" aria-label="{{ __('အထပ်') }} {{ $floor }} {{ __('အခန်းများ') }}">
                     @foreach($floorRooms as $room)
-                        @include('rooms.card', ['dashboardCard' => true])
+                        @include('rooms.card')
                     @endforeach
                     </div>
                 </section>

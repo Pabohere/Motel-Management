@@ -710,3 +710,34 @@ html[data-theme="dark"] .attention-grid .attention-warning { color: #ffe0b0; bac
 form:has(.field-error) input:invalid{border-color:#b42318}
 .price-totals dd{overflow-wrap:anywhere}
 @media(max-width:600px){.quick-actions{flex-wrap:wrap}.quick-actions .btn{flex:1 1 auto}.attention-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.price-totals{grid-template-columns:1fr}.price-totals dd{margin:0}.identity-gallery form .btn{white-space:normal}}
+
+/* Shared card proportions in the room grid and dashboard swipe rows. */
+.rooms-page .room-floor--grid .room-rail {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+}
+.room-status-card.room-status-card--compact { min-height: 260px; padding: 14px; gap: 10px; }
+.room-status-card--compact .room-status-header { flex-wrap: nowrap; align-items: flex-start; gap: 10px; }
+.room-status-card--compact .room-status-number { border: 0; border-radius: 0; }
+.room-status-card--compact .room-status-badge { max-width: 60%; padding: 5px 8px; }
+.room-status-card.room-status-card--compact .room-status-details { display: grid; gap: 4px; margin: 0; }
+.room-status-card--compact .room-status-actions { flex-wrap: wrap; gap: 8px; }
+.room-status-card--compact .room-status-actions > .btn,
+.room-status-card--compact .room-status-actions > form { flex: 0 1 auto; }
+.room-status-card--compact .room-status-actions .btn { padding: 8px 10px; }
+.room-floor--swipe { margin: 0; min-width: 0; }
+.room-floor--swipe .floor-heading { align-items: center; gap: 12px; margin-bottom: 0; }
+.room-floor--swipe .floor-heading h3 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; margin: 0; font-size: 18px; }
+.room-floor--swipe .floor-heading h3 > span { font-size: 12px; font-weight: 400; color: var(--muted); }
+.room-floor--swipe .room-rail {
+  display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory; scroll-padding-inline: 2px;
+  padding: 14px 2px 18px; scrollbar-width: thin;
+}
+.room-floor--swipe .room-status-card { flex: 0 0 min(280px, 82vw); scroll-snap-align: start; }
+.room-floor--swipe .room-status-card[hidden] { display: none; }
+.room-status-card--compact .room-actions-menu { width: auto; margin-left: auto; }
+.room-status-card--compact .room-actions-menu > summary { justify-content: center; }
+.room-status-card--compact .room-actions-menu > div { position: absolute; width: max-content; min-width: 160px; max-width: 230px; box-shadow: 0 8px 24px #0002; }
+.room-floor--swipe .room-actions-menu > div { top: auto; bottom: 100%; }
+.room-rail-controls .room-rail-button { width: 44px; height: 44px; flex-shrink: 0; }
