@@ -8,10 +8,11 @@ document.querySelectorAll('form').forEach(form => {
       submittedValue.type = 'hidden';
       submittedValue.name = event.submitter.name;
       submittedValue.value = event.submitter.value;
+      submittedValue.dataset.submittedValue = "true";
       form.appendChild(submittedValue);
     }
     const buttons = form.querySelectorAll('button[type="submit"], button:not([type])');
-    buttons.forEach(button => { button.disabled = true; });
+    buttons.forEach(button => { if (!button.disabled) { button.dataset.submissionDisabled = "true"; button.disabled = true; } });
   });
 });
 const room = document.getElementById('room-select');
@@ -35,6 +36,8 @@ updateCheckoutMinimum();
 
 const priceSummary = document.getElementById('price-summary');
 const deposit = document.querySelector('input[name="deposit"]');
+const paymentTerm = document.querySelector('select[name="payment_term"]');
+let manualDeposit = deposit?.dataset?.manual === 'true';
 let manualCharge = charge?.dataset.manual === 'true';
 function roomQuote() {
   const rate = Number(room?.selectedOptions[0]?.dataset.rate);
@@ -53,6 +56,7 @@ function refreshPricing(recalculate = false) {
   const number = new Intl.NumberFormat(document.documentElement.lang === 'my' ? 'my-MM' : 'en');
   const write = (id, value) => { const output = document.getElementById(id); if (output) output.textContent = value; };
   const amount = charge.valueAsNumber;
+  if (deposit && paymentTerm?.value === 'immediate' && !manualDeposit && Number.isFinite(amount)) deposit.value = amount;
   const paid = deposit ? deposit.valueAsNumber : 0;
   write('quote-rate', quote ? number.format(quote.rate) : '—');
   write('quote-nights', quote ? number.format(quote.nights) : '—');
@@ -74,7 +78,8 @@ checkIn?.addEventListener('change', () => refreshPricing(true));
 checkOut?.addEventListener('input', () => refreshPricing(true));
 checkOut?.addEventListener('change', () => refreshPricing(true));
 charge?.addEventListener('input', () => { manualCharge = true; refreshPricing(); });
-deposit?.addEventListener('input', () => refreshPricing());
+deposit?.addEventListener('input', () => { manualDeposit = true; refreshPricing(); });
+paymentTerm?.addEventListener('change', () => { manualDeposit = false; if (deposit && paymentTerm.value === 'credit') deposit.value = 0; refreshPricing(); });
 document.getElementById('calculate-rate')?.addEventListener('click', calculateRate);
 refreshPricing(!manualCharge);
 
@@ -306,3 +311,30 @@ if (mobileMenu && mobileMenuTrigger) {
   });
   window.addEventListener('pagehide', () => { if (mobileMenu.open) mobileMenu.close(); });
 }
+
+// Safari and Chrome can restore disabled controls when returning from a submitted page.
+globalThis.addEventListener?.('pageshow', () => {
+  document.querySelectorAll('[data-submission-disabled]').forEach(button => {
+    button.disabled = false;
+    delete button.dataset.submissionDisabled;
+  });
+  document.querySelectorAll('[data-submitted-value]').forEach(input => input.remove());
+});
+const checkinForm = document.getElementById('check-in-form');
+function refreshCheckinReview() {
+  if (!checkinForm) return;
+  const guest = checkinForm.querySelector('[name="guest_name"]');
+  const fields = { guest: guest?.value.trim() || '—', room: room?.selectedOptions[0]?.textContent || '—', dates: `${checkIn?.value.replace('T', ' ') || '—'} → ${checkOut?.value.replace('T', ' ') || '—'}` };
+  Object.entries(fields).forEach(([key, value]) => { const output = checkinForm.querySelector(`[data-review-${key}]`); if (output) output.textContent = value; });
+}
+checkinForm?.addEventListener('input', refreshCheckinReview);
+checkinForm?.addEventListener('change', refreshCheckinReview);
+refreshCheckinReview();
+
+document.querySelectorAll('[data-payment-balance]').forEach(form => {
+  const amount = form.querySelector('[name="amount"]');
+  const output = form.querySelector('[data-payment-remaining]');
+  const update = () => { if (output) output.textContent = Number.isInteger(amount.valueAsNumber) ? new Intl.NumberFormat(document.documentElement.lang === 'my' ? 'my-MM' : 'en').format(Number(form.dataset.paymentBalance) - amount.valueAsNumber) : '—'; };
+  amount.addEventListener('input', update);
+  update();
+});

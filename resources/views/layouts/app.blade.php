@@ -17,15 +17,10 @@
         'rooms.index' => ['label' => 'အခန်းများ', 'short' => 'အခန်းများ', 'icon' => 'home', 'active' => request()->routeIs('rooms.*')],
         'stays.index' => ['label' => 'ဧည့်သည်စာရင်း', 'short' => 'ဧည့်သည်', 'icon' => 'users', 'active' => request()->routeIs('stays.*')],
         'reservations.index' => ['label' => 'Booking စာရင်း', 'short' => 'Booking', 'icon' => 'calendar', 'active' => request()->routeIs('reservations.*')],
-        'reports.daily' => ['label' => 'နေ့စဉ်စာရင်း', 'icon' => 'calendar', 'active' => request()->routeIs('reports.daily')],
+        'payments.index' => ['label' => 'Payments', 'icon' => 'wallet', 'active' => request()->routeIs('payments.*')],
+        'reports.index' => ['label' => 'Reports', 'icon' => 'calendar', 'active' => request()->routeIs('reports.*')],
+        'settings' => ['label' => 'Settings', 'icon' => 'key', 'active' => request()->routeIs('settings', 'users.*', 'audit.*')],
     ];
-    if (auth()->user()->isManager()) {
-        $navigation += [
-            'reports.monthly' => ['label' => 'လစဉ်စာရင်း', 'icon' => 'wallet', 'active' => request()->routeIs('reports.monthly*')],
-            'users.index' => ['label' => 'ဝန်ထမ်းများ', 'icon' => 'users', 'active' => request()->routeIs('users.*')],
-            'audit.index' => ['label' => 'ပြောင်းလဲမှုမှတ်တမ်း', 'icon' => 'clock', 'active' => request()->routeIs('audit.*')],
-        ];
-    }
     $primaryRoutes = ['dashboard', 'rooms.index', 'stays.index', 'reservations.index'];
     $moreActive = request()->routeIs('password.*') || collect($navigation)->except($primaryRoutes)->contains('active', true);
 @endphp

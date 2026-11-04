@@ -25,13 +25,16 @@ class UserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate(['name' => 'required|string|max:150', 'email' => 'required|email|max:255|unique:users', 'password' => 'required|string|min:12|max:128|confirmed', 'position' => 'nullable|string|max:120', 'biography' => 'nullable|string|max:4000', 'photo' => $this->photoRules(), 'role' => ['required', Rule::in(['manager', 'staff'])]]);
+        $request->validate(['can_view_documents' => 'nullable|boolean', 'can_upload_documents' => 'nullable|boolean']);
+        $data['can_view_documents'] = $request->boolean('can_view_documents');
+        $data['can_upload_documents'] = $request->boolean('can_upload_documents');
         $photoPath = $this->storePhoto($request);
         unset($data['photo']);
         try {
             DB::transaction(function () use ($data, $photoPath): void {
                 $data['password'] = Hash::make($data['password']);
                 $user = User::create([...$data, 'photo_path' => $photoPath]);
-                Audit::record('user.created', $user, null, $user->only(['name', 'email', 'role', 'active', 'position', 'biography', 'photo_path']));
+                Audit::record('user.created', $user, null, $user->only(['name', 'email', 'role', 'active', 'position', 'biography', 'photo_path', 'can_view_documents', 'can_upload_documents']));
             });
         } catch (Throwable $exception) {
             if ($photoPath) {
@@ -49,6 +52,9 @@ class UserController extends Controller
         if ($request->hasFile('photo') && $request->boolean('remove_photo')) {
             throw ValidationException::withMessages(['photo' => __('ဓာတ်ပုံအသစ်တင်ခြင်းနှင့် ဖယ်ရှားခြင်းကို တစ်ပြိုင်တည်း မရွေးပါနှင့်။')]);
         }
+        $request->validate(['can_view_documents' => 'nullable|boolean', 'can_upload_documents' => 'nullable|boolean']);
+        $data['can_view_documents'] = $request->boolean('can_view_documents');
+        $data['can_upload_documents'] = $request->boolean('can_upload_documents');
         $photoPath = $this->storePhoto($request);
         unset($data['photo'], $data['remove_photo']);
         $previousPhoto = null;
@@ -63,7 +69,7 @@ class UserController extends Controller
                 if ($locked->isManager() && $locked->active && (! $data['active'] || $data['role'] !== 'manager') && $managers->count() <= 1) {
                     throw ValidationException::withMessages(['operation' => __('အနည်းဆုံး မန်နေဂျာတစ်ဦး ရှိရပါမည်။')]);
                 }
-                $before = $locked->only(['name', 'role', 'active', 'position', 'biography', 'photo_path']);
+                $before = $locked->only(['name', 'role', 'active', 'position', 'biography', 'photo_path', 'can_view_documents', 'can_upload_documents']);
                 if ($photoPath || $request->boolean('remove_photo')) {
                     $previousPhoto = $locked->photo_path;
                     $data['photo_path'] = $photoPath;
@@ -72,7 +78,7 @@ class UserController extends Controller
                 if (! $locked->active || $before['role'] !== $locked->role) {
                     DB::table('sessions')->where('user_id', $locked->id)->delete();
                 }
-                Audit::record('user.updated', $locked, $before, $locked->only(['name', 'role', 'active', 'position', 'biography', 'photo_path']));
+                Audit::record('user.updated', $locked, $before, $locked->only(['name', 'role', 'active', 'position', 'biography', 'photo_path', 'can_view_documents', 'can_upload_documents']));
             });
         } catch (Throwable $exception) {
             if ($photoPath) {

@@ -7,6 +7,7 @@ use App\Models\Room;
 use App\Models\Stay;
 use App\Services\Audit;
 use App\Services\FrontDesk;
+use App\Services\RoomAvailability;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,7 @@ class ReservationController extends Controller
 {
     public function index(Request $request): View
     {
-        $data = $request->validate(['status' => ['nullable', Rule::in(['booked', 'checked_in', 'cancelled'])], 'today' => ['nullable', 'boolean']]);
+        $data = $request->validate(['status' => ['nullable', Rule::in(['booked', 'checked_in', 'completed', 'cancelled', 'no_show'])], 'today' => ['nullable', 'boolean']]);
         $reservations = Reservation::with(['room.floor', 'room.roomType', 'stay'])
             ->when($data['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($data['today'] ?? false, fn ($query) => $query->where('arrival_at', '>=', today())->where('arrival_at', '<', today()->addDay()))
@@ -49,9 +50,7 @@ class ReservationController extends Controller
             if ($room->status === 'maintenance') {
                 throw ValidationException::withMessages(['room_id' => __('ပြင်ဆင်နေသောအခန်းကို ကြိုတင်ချိန်း၍မရပါ။')]);
             }
-            if ($room->reservations()->where('status', 'booked')->where('arrival_at', '<', $data['departure_at'])->where('departure_at', '>', $data['arrival_at'])->exists()) {
-                throw ValidationException::withMessages(['arrival_at' => __('ဤအချိန်တွင် အခန်းကို ကြိုတင်ချိန်းထားပြီးဖြစ်သည်။')]);
-            }
+            app(RoomAvailability::class)->ensureNoReservationOverlap($room, $data['arrival_at'], $data['departure_at'], field: 'arrival_at');
             if ($room->activeStay()->where('expected_check_out_at', '>', $data['arrival_at'])->exists()) {
                 throw ValidationException::withMessages(['arrival_at' => __('လက်ရှိတည်းခိုမှုနှင့် အချိန်တိုက်နေပါသည်။')]);
             }
@@ -67,7 +66,7 @@ class ReservationController extends Controller
         $stay = DB::transaction(function () use ($reservation, $desk): Stay {
             $room = Room::lockForUpdate()->findOrFail($reservation->room_id);
             $booking = Reservation::lockForUpdate()->findOrFail($reservation->id);
-            if ($booking->status !== 'booked' || $booking->departure_at->isPast()) {
+            if ($booking->status !== 'booked' || $booking->departure_at->lte(now())) {
                 throw ValidationException::withMessages(['operation' => __('ဤ reservation ကို Check-in မလုပ်နိုင်ပါ။')]);
             }
             $stay = $desk->checkIn([
@@ -85,6 +84,53 @@ class ReservationController extends Controller
         }, 3);
 
         return redirect()->route('stays.show', $stay)->with('success', __('Reservation Check-in လုပ်ပြီးပါပြီ။'));
+    }
+
+    public function noShow(Reservation $reservation): RedirectResponse
+    {
+        DB::transaction(function () use ($reservation): void {
+            $booking = Reservation::lockForUpdate()->findOrFail($reservation->id);
+            if ($booking->status !== 'booked' || $booking->departure_at->isFuture()) {
+                throw ValidationException::withMessages(['operation' => __('Only an expired booking can be marked no-show.')]);
+            }
+            $before = $booking->toArray();
+            $booking->update(['status' => 'no_show']);
+            Audit::record('reservation.no_show', $booking, $before, $booking->toArray());
+        }, 3);
+
+        return back()->with('success', __('Reservation marked no-show.'));
+    }
+
+    public function edit(Reservation $reservation): View
+    {
+        abort_unless($reservation->status === 'booked', 409);
+        $rooms = Room::with(['floor', 'roomType'])->where('status', '!=', 'maintenance')->orderBy('number')->get();
+
+        return view('reservations.edit', compact('rooms', 'reservation'));
+    }
+
+    public function update(Request $request, Reservation $reservation): RedirectResponse
+    {
+        $data = $request->validate([
+            'arrival_at' => 'required|date', 'departure_at' => 'required|date|after:arrival_at|after:now',
+            'room_charge' => 'required|integer|min:0|max:100000000',
+        ]);
+        DB::transaction(function () use ($reservation, $data): void {
+            $room = Room::lockForUpdate()->findOrFail($reservation->room_id);
+            $booking = Reservation::lockForUpdate()->findOrFail($reservation->id);
+            if ($booking->status !== 'booked' || $room->status === 'maintenance') {
+                throw ValidationException::withMessages(['operation' => __('Only a booked reservation in an operational room can be changed.')]);
+            }
+            app(RoomAvailability::class)->ensureNoReservationOverlap($room, $data['arrival_at'], $data['departure_at'], $booking->id, 'arrival_at');
+            if ($room->activeStay()->where('expected_check_out_at', '>', $data['arrival_at'])->exists()) {
+                throw ValidationException::withMessages(['arrival_at' => __('The selected dates overlap an active stay.')]);
+            }
+            $before = $booking->toArray();
+            $booking->update($data);
+            Audit::record('reservation.updated', $booking, $before, $booking->toArray());
+        }, 3);
+
+        return redirect()->route('reservations.index')->with('success', __('Reservation updated.'));
     }
 
     public function cancel(Reservation $reservation): RedirectResponse

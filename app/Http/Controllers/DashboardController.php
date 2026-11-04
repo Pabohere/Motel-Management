@@ -6,12 +6,13 @@ use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\Stay;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function __invoke()
     {
-        $rooms = Room::with(['activeStay', 'floor', 'roomType', 'nextReservation'])->join('floors', 'floors.id', '=', 'rooms.floor_id')
+        $rooms = Room::with(['activeStay', 'floor', 'roomType', 'nextReservation', 'housekeeper'])->join('floors', 'floors.id', '=', 'rooms.floor_id')
             ->orderBy('floors.number')->orderBy('rooms.number')->select('rooms.*')->get();
         $floors = $rooms->groupBy(fn (Room $room) => $room->floor->number);
         $counts = $rooms->countBy('status');
@@ -26,6 +27,8 @@ class DashboardController extends Controller
         $departures = $activeStays->filter(fn (Stay $stay): bool => $stay->expected_check_out_at->gte(now()) && $stay->expected_check_out_at->lt($end))->count();
         $overdue = $activeStays->filter(fn (Stay $stay): bool => $stay->expected_check_out_at->lt(now()))->count();
 
-        return view('dashboard', compact('rooms', 'floors', 'counts', 'checkIns', 'checkOuts', 'received', 'activeStays', 'arrivals', 'departures', 'overdue'));
+        $outstanding = (int) DB::query()->fromSub(Stay::withTrashed()->withFinancialTotals(), 'balances')->selectRaw('SUM(CASE WHEN room_charge + COALESCE(charges_sum_amount, 0) - COALESCE(payments_sum_amount, 0) > 0 THEN room_charge + COALESCE(charges_sum_amount, 0) - COALESCE(payments_sum_amount, 0) ELSE 0 END) AS outstanding')->value('outstanding');
+
+        return view('dashboard', compact('rooms', 'floors', 'counts', 'checkIns', 'checkOuts', 'received', 'activeStays', 'arrivals', 'departures', 'overdue', 'outstanding'));
     }
 }

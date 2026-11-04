@@ -19,8 +19,8 @@ class MobileNavigationTest extends TestCase
         $xpath = $this->navigation($response->getContent());
         $this->assertSame(4, $xpath->query('//nav[@class="mobile-bottom-nav"]/a')->length);
         $this->assertSame(1, $xpath->query('//nav[@class="mobile-bottom-nav"]/button[contains(@class,"active")][@aria-controls="mobile-menu"]')->length);
-        $this->assertSame(route('reports.monthly'), $xpath->query('//dialog[@id="mobile-menu"]//a[@aria-current="page"]')->item(0)->getAttribute('href'));
-        foreach (['reports.daily', 'users.index', 'audit.index', 'password.edit'] as $route) {
+        $this->assertSame(route('reports.index'), $xpath->query('//dialog[@id="mobile-menu"]//a[@aria-current="page"]')->item(0)->getAttribute('href'));
+        foreach (['reports.index', 'settings', 'payments.index', 'password.edit'] as $route) {
             $this->assertSame(1, $xpath->query('//dialog[@id="mobile-menu"]//a[@href="'.route($route).'"]')->length);
         }
         $this->assertSame(1, $xpath->query('//dialog[@id="mobile-menu"]//form[@action="'.route('logout').'"]//input[@name="_token"]')->length);
@@ -35,7 +35,7 @@ class MobileNavigationTest extends TestCase
         foreach (['reports.monthly', 'users.index', 'audit.index'] as $route) {
             $this->assertSame(0, $xpath->query('//dialog[@id="mobile-menu"]//a[@href="'.route($route).'"]')->length);
         }
-        $this->assertSame(1, $xpath->query('//dialog[@id="mobile-menu"]//a[@href="'.route('reports.daily').'"]')->length);
+        $this->assertSame(1, $xpath->query('//dialog[@id="mobile-menu"]//a[@href="'.route('reports.index').'"]')->length);
         $this->assertSame(0, $xpath->query('//nav[@class="mobile-bottom-nav"]/button[contains(@class,"active")]')->length);
     }
 

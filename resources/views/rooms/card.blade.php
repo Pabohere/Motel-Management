@@ -17,8 +17,8 @@
             <a class="btn secondary small" href="{{ route('stays.show', $room->activeStay) }}">{{ __('View guest') }}</a>
         @elseif($room->status === 'available')
             <a class="btn secondary small" href="{{ route('stays.create', ['room' => $room->id]) }}">+ {{ __('Check-in') }}</a>
-        @elseif($room->status === 'dirty')
-            <form method="post" action="{{ route('rooms.status', $room) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="available"><button class="btn small">{{ __('✓ အခန်းသန့်ပြီး') }}</button></form>
+        @elseif(in_array($room->status, ['dirty', 'cleaning', 'cleaned', 'inspected']))
+            @include('rooms.housekeeping-action')
         @endif
         <details class="room-actions-menu">
             <summary aria-label="{{ __('More actions for room') }} {{ $room->number }}">{{ __('ပိုမို') }}</summary>

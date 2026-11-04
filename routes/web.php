@@ -1,17 +1,18 @@
 <?php
 
+use App\Http\Controllers\AuditController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\FinancialEntryController;
 use App\Http\Controllers\MonthlyReportController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StayController;
 use App\Http\Controllers\UserController;
-use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'login'])->name('login');
     Route::post('/login', [AuthController::class, 'authenticate'])->middleware('throttle:5,1')->name('login.submit');
 });
-Route::middleware(['auth', 'active'])->group(function () {
+Route::middleware(['auth', 'active', 'private'])->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/password', [AuthController::class, 'password'])->name('password.edit');
@@ -41,20 +42,29 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/reservations/create', [ReservationController::class, 'create'])->name('reservations.create');
     Route::post('/reservations', [ReservationController::class, 'store'])->name('reservations.store');
     Route::post('/reservations/{reservation}/check-in', [ReservationController::class, 'checkIn'])->name('reservations.check-in');
+    Route::get('/reservations/{reservation}/edit', [ReservationController::class, 'edit'])->name('reservations.edit');
+    Route::put('/reservations/{reservation}', [ReservationController::class, 'update'])->name('reservations.update');
+    Route::post('/reservations/{reservation}/no-show', [ReservationController::class, 'noShow'])->name('reservations.no-show');
     Route::post('/reservations/{reservation}/cancel', [ReservationController::class, 'cancel'])->name('reservations.cancel');
     Route::get('/stays/create', [StayController::class, 'create'])->name('stays.create');
     Route::post('/stays', [StayController::class, 'store'])->name('stays.store');
     Route::get('/stays/{stay}', [StayController::class, 'show'])->withTrashed()->name('stays.show');
     Route::get('/stays/{stay}/edit', [StayController::class, 'edit'])->name('stays.edit');
     Route::get('/stays/{stay}/identity', [StayController::class, 'identityDocument'])->withTrashed()->name('stays.identity');
-    Route::get('/stays/{stay}/identity/{document}', [StayController::class, 'identityDocument'])->withTrashed()->name('stays.identity.show');
+    Route::get('/stays/{stay}/identity/{document}', [StayController::class, 'identityDocument'])->withTrashed(['stay'])->name('stays.identity.show');
     Route::get('/stays/{stay}/payments/{payment}/receipt', [StayController::class, 'paymentReceipt'])->withTrashed()->name('stays.payments.receipt');
     Route::put('/stays/{stay}', [StayController::class, 'update'])->name('stays.update');
     Route::post('/stays/{stay}/charges', [StayController::class, 'charge'])->name('stays.charges');
-    Route::post('/stays/{stay}/payments', [StayController::class, 'payment'])->middleware('throttle:30,1')->name('stays.payments');
+    Route::post('/stays/{stay}/payments', [StayController::class, 'payment'])->withTrashed()->middleware('throttle:30,1')->name('stays.payments');
     Route::post('/stays/{stay}/checkout', [StayController::class, 'checkOut'])->name('stays.checkout');
+    Route::get('/payments', PaymentController::class)->name('payments.index');
+    Route::view('/reports', 'reports.index')->name('reports.index');
+    Route::view('/settings', 'settings')->name('settings');
     Route::get('/reports/daily', ReportController::class)->name('reports.daily');
     Route::middleware('manager')->group(function () {
+        Route::post('/stays/{stay}/payments/{payment}/reverse', [StayController::class, 'reversePayment'])->withTrashed()->name('stays.payments.reverse');
+        Route::delete('/stays/{stay}/identity/{document}', [StayController::class, 'deleteIdentity'])->withTrashed(['stay'])->name('stays.identity.delete');
+        Route::delete('/stays/{stay}/payments/{payment}/receipt', [StayController::class, 'deleteReceipt'])->withTrashed()->name('stays.payments.receipt.delete');
         Route::get('/reports/monthly', [MonthlyReportController::class, 'index'])->name('reports.monthly');
         Route::get('/reports/monthly/pdf', [MonthlyReportController::class, 'pdf'])->middleware('throttle:10,1')->name('reports.monthly.pdf');
         Route::get('/reports/monthly/statements', [MonthlyReportController::class, 'statements'])->name('reports.monthly.statements');
@@ -80,6 +90,6 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/users/{user}/photo', [UserController::class, 'photo'])->name('users.photo');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
-        Route::get('/audit', fn () => view('audit.index', ['logs' => AuditLog::with('user')->latest('id')->paginate(30)]))->name('audit.index');
+        Route::get('/audit', AuditController::class)->name('audit.index');
     });
 });

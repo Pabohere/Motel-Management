@@ -5,6 +5,7 @@ use App\Services\Audit;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schedule;
 
 use function Laravel\Prompts\password;
 use function Laravel\Prompts\text;
@@ -50,3 +51,7 @@ Artisan::command('motel:prepare-demo', function () {
 
     return 0;
 })->purpose('Seed a disposable demo environment with an env-configured manager');
+
+if (config('app.backup_directory')) {
+    Schedule::command('motel:backup', [config('app.backup_directory')])->dailyAt('03:00')->withoutOverlapping()->appendOutputTo(storage_path('logs/backup.log'));
+}

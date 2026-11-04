@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AuditLog;
 use App\Models\Expense;
 use App\Models\Payment;
 use App\Models\Stay;
@@ -50,10 +51,11 @@ class MonthlyFinancialStatements
         $assets = $closing['cash'] + $closing['receivables'] + $closing['fixed_assets'] + $closing['other_assets'] + $closing['accumulated_depreciation'];
         $liabilities = -$closing['payables'] - $closing['loans'] - $closing['guest_deposits'] - $closing['other_liabilities'];
         $equity = -$closing['capital'] - $closing['opening_equity'] + $retained - $closing['drawings'];
-        $operatingReceipts = (int) Payment::where('created_at', '>=', $start)->where('created_at', '<', $cutoff)->sum('amount');
+        $operatingReceipts = (int) Payment::where('amount', '>', 0)->where('created_at', '>=', $start)->where('created_at', '<', $cutoff)->sum('amount');
         $expenseTotals = Expense::where('expense_date', '>=', $start->toDateString())->where('expense_date', '<', $this->dateBoundary($cutoff))
             ->selectRaw('SUM(amount) as total, SUM(CASE WHEN category = ? THEN amount ELSE 0 END) as staff_cost', ['salary'])->first();
-        $operatingPayments = (int) $expenseTotals->total;
+        $refunds = -(int) Payment::where('amount', '<', 0)->where('created_at', '>=', $start)->where('created_at', '<', $cutoff)->sum('amount');
+        $operatingPayments = (int) $expenseTotals->total + $refunds;
         $staffCost = (int) $expenseTotals->staff_cost;
         $inflows = ['operating' => $operatingReceipts, 'investing' => 0, 'financing' => 0];
         $outflows = ['operating' => $operatingPayments, 'investing' => 0, 'financing' => 0];
@@ -189,13 +191,18 @@ class MonthlyFinancialStatements
         $spent = (int) Expense::where('expense_date', '<', $this->dateBoundary($cutoff))->sum('amount');
         $balances['cash'] = $received - $spent;
         $balances['operating_expense'] = $spent;
+        $laterChanges = AuditLog::where('subject_type', 'Stay')->whereIn('action', ['stay.updated', 'stay.check_out'])
+            ->where('created_at', '>=', $cutoff)->orderBy('id')->get(['subject_id', 'before'])->unique('subject_id')->keyBy('subject_id');
         $stays = Stay::withTrashed()->select(['id', 'room_charge', 'check_in_at', 'expected_check_out_at', 'check_out_at'])
             ->withSum(['charges' => fn (Builder $query) => $query->where('created_at', '<', $cutoff)], 'amount')
             ->withSum(['payments' => fn (Builder $query) => $query->where('created_at', '<', $cutoff)], 'amount')
             ->where('check_in_at', '<', $cutoff)->where('created_at', '<', $cutoff)->lazyById(500);
         foreach ($stays as $stay) {
+            $historical = $laterChanges->get($stay->id)?->before ?? [];
+            $expectedDeparture = isset($historical['expected_check_out_at']) ? Carbon::parse($historical['expected_check_out_at'])->setTimezone(config('app.timezone')) : $stay->expected_check_out_at;
+            $actualDeparture = $stay->check_out_at?->lt($cutoff) ? $stay->check_out_at : null;
             $arrival = $stay->check_in_at->copy()->startOfDay();
-            $departure = ($stay->check_out_at ?? $stay->expected_check_out_at)->copy()->startOfDay();
+            $departure = ($actualDeparture ?? $expectedDeparture)->copy()->startOfDay();
             $nights = max(1, (int) $arrival->diffInDays($departure, false));
             $elapsed = max(0, min($nights, (int) $arrival->diffInDays($cutoff->copy()->startOfDay(), false)));
             if ($stay->check_out_at && $stay->check_out_at->lt($cutoff)) {

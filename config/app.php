@@ -2,6 +2,8 @@
 
 return [
 
+    'backup_directory' => env('MOTEL_BACKUP_DIRECTORY'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Name

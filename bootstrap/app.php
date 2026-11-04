@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureActive;
 use App\Http\Middleware\EnsureManager;
+use App\Http\Middleware\PrivateResponses;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [SetLocale::class]);
-        $middleware->alias(['active' => EnsureActive::class, 'manager' => EnsureManager::class]);
+        $middleware->alias(['active' => EnsureActive::class, 'manager' => EnsureManager::class, 'private' => PrivateResponses::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

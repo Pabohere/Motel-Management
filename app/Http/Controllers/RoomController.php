@@ -33,7 +33,7 @@ class RoomController extends Controller
             ->orderBy('floors.number')->orderBy('rooms.number')->select('rooms.*')->get();
         $floors = Floor::orderBy('number')->get();
         if ($request->routeIs('rooms.all')) {
-            $rooms->load(['activeStay', 'floor', 'roomType', 'nextReservation']);
+            $rooms->load(['activeStay', 'floor', 'roomType', 'nextReservation', 'housekeeper']);
 
             return view('rooms.all', compact('rooms', 'floors'));
         }
@@ -41,7 +41,7 @@ class RoomController extends Controller
         $totalRooms = $rooms->count();
         $floorNumbers = $floors->pluck('number', 'id');
         $floorRoomCounts = $rooms->countBy(fn (Room $room) => $floorNumbers[$room->floor_id]);
-        $rooms->load(['activeStay', 'floor', 'roomType', 'nextReservation']);
+        $rooms->load(['activeStay', 'floor', 'roomType', 'nextReservation', 'housekeeper']);
         $roomTypes = RoomType::orderBy('name')->get();
 
         return view('rooms.index', compact('rooms', 'floors', 'roomTypes', 'totalRooms', 'floorRoomCounts'));
@@ -165,7 +165,7 @@ class RoomController extends Controller
 
     public function status(Request $request, Room $room, FrontDesk $desk)
     {
-        $data = $request->validate(['status' => ['required', Rule::in(['available', 'dirty', 'maintenance'])]]);
+        $data = $request->validate(['status' => ['required', Rule::in(array_keys(Room::STATUSES))]]);
         $desk->roomStatus($room, $data['status']);
 
         return back()->with('success', __('အခန်းအခြေအနေ ပြောင်းပြီးပါပြီ။'));

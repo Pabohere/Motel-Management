@@ -17,6 +17,10 @@
     @if(!$room->trashed() && $room->status === 'available')<a class="btn" href="{{ route('stays.create', ['room' => $room->id]) }}">+ Check-in</a>@endif
 </div>
 @if(!$room->trashed() && $room->status === 'occupied')<p class="muted">{{ __('ဧည့်သည်ရှိနေသောအခန်းကို Check-out မလုပ်မီ ဖျက်၍မရပါ။') }}</p>@endif
+@if(!$room->trashed() && !$room->activeStay)
+<section class="panel top-space"><h2>{{ __('Housekeeping') }}</h2>@include('rooms.housekeeping-action')<p class="muted">{{ $room->housekeeper?->name }} @if($room->cleaning_started_at) · {{ __('Started') }} {{ $room->cleaning_started_at->format('d M H:i') }}@endif @if($room->cleaned_at) · {{ __('Cleaned') }} {{ $room->cleaned_at->format('d M H:i') }}@endif @if($room->inspected_at) · {{ __('Inspected') }} {{ $room->inspected_at->format('d M H:i') }}@endif</p>
+@if(auth()->user()->isManager())<form method="post" action="{{ route('rooms.status', $room) }}">@csrf @method('PATCH')<label>{{ __('Room operation') }}<select name="status"><option value="dirty">{{ __('Needs cleaning') }}</option>@if($room->status !== 'maintenance')<option value="maintenance">{{ __('Maintenance') }}</option>@endif</select></label><button class="btn secondary">{{ __('Update status') }}</button></form>@endif</section>
+@endif
 <section class="panel top-space">
     <h2>{{ __('အခန်းတည်းခိုမှုမှတ်တမ်း') }}</h2>
     <div class="monthly-table-scroll"><table><thead><tr><th>{{ __('ဧည့်သည်') }}</th><th>{{ __('ဝင်ချိန်') }}</th><th>{{ __('ထွက်ချိန်') }}</th><th>{{ __('အခြေအနေ') }}</th><th></th></tr></thead><tbody>

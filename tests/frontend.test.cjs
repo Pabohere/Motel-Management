@@ -36,7 +36,7 @@ test('empty or invalid arrival clears the minimum without a script error', () =>
   assert.equal(checkOut.min, undefined);
 });
 
-function pricingForm(manual = false) {
+function pricingForm(manual = false, term = null) {
   const controls = {};
   function input(id, value = '') {
     const handlers = {};
@@ -53,9 +53,10 @@ function pricingForm(manual = false) {
   input('check-out', '2026-11-04T12:00');
   input('room-charge', manual ? '42000' : '0').dataset.manual = String(manual);
   input('deposit', '10000');
+  if (term) input('payment-term', term);
   for (const id of ['price-summary', 'quote-rate', 'quote-nights', 'quote-total', 'quote-charge', 'quote-paid', 'quote-balance', 'quote-override', 'quote-invalid', 'calculate-rate']) input(id);
   const document = { documentElement: { lang: 'en' }, querySelectorAll: () => [],
-    querySelector: selector => selector === 'input[name="deposit"]' ? controls.deposit : null,
+    querySelector: selector => selector === 'input[name="deposit"]' ? controls.deposit : selector === 'select[name="payment_term"]' ? controls['payment-term'] ?? null : null,
     getElementById: id => controls[id] ?? null };
   vm.runInNewContext(fs.readFileSync('public/app.js', 'utf8'), { document });
   return controls;
@@ -105,4 +106,32 @@ test('invalid or incomplete dates never replace the entered charge with a mislea
   c['check-in'].value = '';
   c['check-in'].fire('input');
   assert.equal(c['quote-total'].textContent, '—');
+});
+
+test('pay-now fills the full amount while credit and manual payment remain explicit', () => {
+  const c = pricingForm(false, 'immediate');
+  assert.equal(Number(c.deposit.value), 35000);
+  c['check-out'].value = '2026-11-06T12:00';
+  c['check-out'].fire('input');
+  assert.equal(Number(c.deposit.value), 105000);
+  c['payment-term'].value = 'credit';
+  c['payment-term'].fire('change');
+  assert.equal(Number(c.deposit.value), 0);
+  c.deposit.value = '10000';
+  c.deposit.fire('input');
+  assert.equal(c['quote-balance'].textContent, '95,000');
+  c['payment-term'].value = 'immediate';
+  c['payment-term'].fire('change');
+  assert.equal(Number(c.deposit.value), 105000);
+});
+test('returning with browser history restores only buttons disabled by submission', () => {
+  const handlers = {};
+  const changed = {disabled:true,dataset:{submissionDisabled:'true'}};
+  const temporary = {remove:()=>temporary.removed=true};
+  const document = {querySelector:()=>null,getElementById:()=>null,querySelectorAll:selector=>selector==='[data-submission-disabled]'?[changed]:selector==='[data-submitted-value]'?[temporary]:[]};
+  vm.runInNewContext(fs.readFileSync('public/app.js','utf8'),{document,addEventListener:(event,fn)=>handlers[event]=fn});
+  handlers.pageshow();
+  assert.equal(changed.disabled,false);
+  assert.equal(changed.dataset.submissionDisabled,undefined);
+  assert.equal(temporary.removed,true);
 });

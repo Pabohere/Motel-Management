@@ -12,6 +12,8 @@
             <details class="staff-editor"><summary>{{ __('ဝန်ထမ်းအချက်အလက် ပြင်ရန်') }}</summary>
                 <form method="post" enctype="multipart/form-data" action="{{ route('users.update', $user) }}">@csrf @method('PUT')
                     <div class="form-grid">
+<label><input type="checkbox" name="can_view_documents" value="1" @checked($user->can_view_documents)>{{ __('View identity documents') }}</label>
+<label><input type="checkbox" name="can_upload_documents" value="1" @checked($user->can_upload_documents)>{{ __('Upload identity documents') }}</label>
                         <label>{{ __('အမည်') }}<input name="name" value="{{ $user->name }}" maxlength="150" required></label>
                         <label>{{ __('ရာထူး') }}<input name="position" value="{{ $user->position }}" maxlength="120" placeholder="{{ __('ဥပမာ — Receptionist၊ Housekeeping') }}"></label>
                         <label>{{ __('လုပ်ပိုင်ခွင့်') }}<select name="role"><option value="staff" @selected($user->role === 'staff')>{{ __('ဝန်ထမ်း') }}</option><option value="manager" @selected($user->role === 'manager')>{{ __('မန်နေဂျာ') }}</option></select></label>
@@ -28,6 +30,8 @@
     </section>
     <section class="panel top-space" id="add-staff"><h2>{{ __('ဝန်ထမ်းအသစ် ထည့်ရန်') }}</h2><form method="post" enctype="multipart/form-data" action="{{ route('users.store') }}">@csrf
         <div class="form-grid">
+<label><input type="checkbox" name="can_view_documents" value="1" @checked(old('can_view_documents', false))>{{ __('View identity documents') }}</label>
+<label><input type="checkbox" name="can_upload_documents" value="1" @checked(old('can_upload_documents', false))>{{ __('Upload identity documents') }}</label>
             <label>{{ __('အမည်') }}<input name="name" value="{{ old('name') }}" maxlength="150" required></label>
             <label>{{ __('ရာထူး') }}<input name="position" value="{{ old('position') }}" maxlength="120" placeholder="{{ __('ဥပမာ — Receptionist၊ Housekeeping') }}"></label>
             <label>{{ __('အီးမေးလ်') }}<input name="email" value="{{ old('email') }}" type="email" maxlength="255" required></label>

@@ -701,3 +701,12 @@ html[data-theme="dark"] .attention-grid .attention-warning { color: #ffe0b0; bac
   .room-actions-menu > div > a { white-space: normal; overflow-wrap: anywhere; }
 }
 .tabs a { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* Operations: clear touch targets and quiet housekeeping statuses. */
+.field-error{color:var(--danger,#b42318);display:block;margin-top:.4rem;font-weight:600}
+.room-status-card.cleaning,.room-status-card.cleaned,.room-status-card.inspected{border-color:#c3d3cf}
+.room-status-card.cleaning .room-status-badge,.room-status-card.cleaned .room-status-badge,.room-status-card.inspected .room-status-badge{background:#edf4f1;color:#24564b}
+.identity-gallery form{align-self:end}
+form:has(.field-error) input:invalid{border-color:#b42318}
+.price-totals dd{overflow-wrap:anywhere}
+@media(max-width:600px){.quick-actions{flex-wrap:wrap}.quick-actions .btn{flex:1 1 auto}.attention-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.price-totals{grid-template-columns:1fr}.price-totals dd{margin:0}.identity-gallery form .btn{white-space:normal}}

@@ -1,3 +1,4 @@
+@if(auth()->user()->canViewDocuments())
 <div class="identity-heading" id="identity-gallery">
     <div><h3>{{ __('မှတ်ပုံတင် / အထောက်အထား') }}</h3><p class="muted">{{ __('ပုံကိုနှိပ်၍ ဤစာမျက်နှာပေါ်တွင် အကြီးကြည့်နိုင်ပါသည်။') }}</p></div>
     <span class="count-pill">{{ $stay->identityDocuments->count() }} / 5</span>
@@ -16,6 +17,9 @@
                 @endif
                 <span>{{ __('ဖိုင်') }} {{ $loop->iteration }} · {{ __('အကြီးကြည့်ရန်') }}</span>
             </a>
+            @if(auth()->user()->isManager())
+            <form method="post" action="{{ route('stays.identity.delete', [$stay, $document]) }}" data-confirm="{{ __('Permanently delete this file? The stay record will be kept.') }}">@csrf @method('DELETE')<button class="btn danger">{{ __('Delete file') }}</button></form>
+            @endif
         @endforeach
     </div>
     <dialog id="identity-preview-dialog" class="identity-preview-dialog" aria-label="{{ __('အထောက်အထား အကြီးကြည့်ရန်') }}">
@@ -24,3 +28,6 @@
         <iframe title="{{ __('အထောက်အထား PDF ပြန်ကြည့်ရန်') }}" hidden></iframe>
     </dialog>
 @endif
+
+@endif
+<p class="muted">{{ __('Files are retained until a manager chooses to delete them. Financial and stay records are preserved.') }}</p>

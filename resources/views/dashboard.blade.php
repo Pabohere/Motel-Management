@@ -3,7 +3,7 @@
 @section('content')
 <h1 class="sr-only">{{ __('အနှစ်ချုပ်') }}</h1>
 <section class="frontdesk-tools" aria-label="{{ __('Front desk') }}">
-    <div class="quick-actions"><a class="btn" href="{{ route('stays.create') }}">+ {{ __('Check-in') }}</a><a class="btn secondary" href="{{ route('reservations.create') }}">{{ __('New reservation') }}</a></div>
+    <div class="quick-actions"><a class="btn secondary" href="{{ route('stays.index', ['status' => 'active']) }}">{{ __('Check-out') }}</a><a class="btn" href="{{ route('stays.create') }}">+ {{ __('Check-in') }}</a><a class="btn secondary" href="{{ route('reservations.create') }}">{{ __('New reservation') }}</a></div>
     <form class="quick-search" method="get" action="{{ route('stays.index') }}"><label class="sr-only" for="quick-guest-search">{{ __('Find guest or room') }}</label><input id="quick-guest-search" name="q" type="search" maxlength="100" placeholder="{{ __('Name, phone or room number') }}"><button class="btn secondary">{{ __('ရှာမည်') }}</button></form>
 </section>
 <section class="attention-panel" aria-labelledby="attention-heading">
@@ -13,6 +13,8 @@
         <a href="{{ route('stays.index', ['status' => 'active', 'attention' => 'departures']) }}"><strong>{{ $departures }}</strong><span>{{ __('Departures remaining today') }}</span></a>
         <a href="{{ route('stays.index', ['status' => 'active', 'attention' => 'overdue']) }}" @if($overdue) class="attention-warning" @endif><strong>{{ $overdue }}</strong><span>{{ __('Overdue checkouts') }}</span></a>
         <a href="{{ route('rooms.index', ['status' => 'dirty']) }}"><strong>{{ $counts['dirty'] ?? 0 }}</strong><span>{{ __('Rooms to clean') }}</span></a>
+        <a href="{{ route('stays.index') }}"><strong>{{ number_format($outstanding) }} K</strong><span>{{ __('Outstanding guest balances') }}</span></a>
+        <a href="{{ route('rooms.index', ['status' => 'cleaned']) }}"><strong>{{ $counts['cleaned'] ?? 0 }}</strong><span>{{ __('Waiting for inspection') }}</span></a>
     </div>
 </section>
 @include('rooms.summary', ['summaryRooms' => $rooms])
@@ -53,8 +55,8 @@
     <div><span>{{ __('ယနေ့ လက်ခံရရှိငွေ') }}</span><strong>{{ number_format($received) }} <small>MMK</small></strong></div>
     <a href="{{ route('reports.daily') }}">{{ __('နေ့စဉ်စာရင်း') }} →</a>
 </div>
-@if($rooms->where('status','dirty')->isNotEmpty())
-<div class="cleaning-bar"><span>@include('icon', ['name'=>'check']) {{ __('သန့်ရှင်းရေးပြီးသောအခန်း') }}</span><div>@foreach($rooms->where('status','dirty') as $room)<form method="post" action="{{ route('rooms.status',$room) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="available"><button class="clean-room-button">{{ $room->number }} · {{ __('အခန်းသန့်ပြီး') }} ✓</button></form>@endforeach</div></div>
+@if($rooms->whereIn('status', ['dirty', 'cleaning', 'cleaned', 'inspected'])->isNotEmpty())
+<div class="cleaning-bar"><span>{{ __('Housekeeping') }}</span><div>@foreach($rooms->whereIn('status', ['dirty', 'cleaning', 'cleaned', 'inspected']) as $room)<div><strong>{{ $room->number }}</strong> @include('rooms.housekeeping-action')</div>@endforeach</div></div>
 @endif
 <section class="glass-panel booking-panel" aria-labelledby="guest-list-heading">
     <div class="glass-inner">

@@ -34,7 +34,7 @@ class FinancialEntryController extends Controller
             AuditLog::create([
                 'user_id' => auth()->id(), 'action' => 'financial_entry.created',
                 'subject_type' => 'FinancialEntry', 'subject_id' => $entryId,
-                'before' => null, 'after' => $data, 'created_at' => now(),
+                'before' => null, 'after' => $data, 'created_at' => now(), 'ip_address' => request()->ip(),
             ]);
         });
 
