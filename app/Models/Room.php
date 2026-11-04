@@ -13,11 +13,11 @@ class Room extends Model
 
     protected $attributes = ['status' => 'available'];
 
-    protected $fillable = ['number', 'floor_id', 'room_type_id', 'rate', 'status', 'housekeeping_by', 'cleaning_started_at', 'cleaned_at', 'inspected_at'];
+    protected $fillable = ['number', 'floor_id', 'room_type_id', 'rate', 'capacity', 'max_extra_beds', 'extra_bed_rate', 'status', 'housekeeping_by', 'cleaning_started_at', 'cleaned_at', 'inspected_at'];
 
     protected function casts(): array
     {
-        return ['rate' => 'integer', 'cleaning_started_at' => 'datetime', 'cleaned_at' => 'datetime', 'inspected_at' => 'datetime'];
+        return ['capacity' => 'integer', 'max_extra_beds' => 'integer', 'extra_bed_rate' => 'integer', 'rate' => 'integer', 'cleaning_started_at' => 'datetime', 'cleaned_at' => 'datetime', 'inspected_at' => 'datetime'];
     }
 
     public function housekeeper()

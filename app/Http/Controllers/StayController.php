@@ -9,6 +9,7 @@ use App\Models\StayIdentityDocument;
 use App\Services\Audit;
 use App\Services\FrontDesk;
 use App\Services\RoomAvailability;
+use App\Services\StayOccupancy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -26,9 +27,9 @@ class StayController extends Controller
         if (($data['status'] ?? null) === 'archived' && ! $request->user()->isManager()) {
             abort(403);
         }
-        $stays = Stay::with(['room', 'identityDocuments'])->withFinancialTotals()
+        $stays = Stay::with(['room', 'identityDocuments'])->withCount('guests')->withFinancialTotals()
             ->when(($data['status'] ?? '') === 'archived', fn ($q) => $q->onlyTrashed())
-            ->when($data['q'] ?? null, fn ($q, $term) => $q->where(fn ($q) => $q->where('guest_name', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%')->orWhere('id', ltrim($term, '#'))->orWhereHas('room', fn ($room) => $room->where('number', 'like', '%'.$term.'%'))))
+            ->when($data['q'] ?? null, fn ($q, $term) => $q->where(fn ($q) => $q->where('guest_name', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%')->orWhere('id', ltrim($term, '#'))->orWhereHas('guests', fn ($guests) => $guests->where('name', 'like', '%'.$term.'%')->orWhere('phone', 'like', '%'.$term.'%'))->orWhereHas('room', fn ($room) => $room->where('number', 'like', '%'.$term.'%'))))
             ->when($data['source'] ?? null, fn ($q, $source) => $q->where('source', $source))
             ->when(($data['status'] ?? '') === 'active', fn ($q) => $q->whereNull('check_out_at'))
             ->when(($data['status'] ?? '') === 'completed', fn ($q) => $q->whereNotNull('check_out_at'))
@@ -53,10 +54,12 @@ class StayController extends Controller
         $data = $request->validate([
             'request_key' => 'nullable|uuid', 'room_id' => 'required|integer|exists:rooms,id', 'guest_name' => 'required|string|max:150', 'gender' => ['required', Rule::in(array_keys(Stay::GENDERS))], 'phone' => 'required|string|max:40', 'notes' => 'nullable|string|max:2000',
             'check_in_at' => 'required|date|before_or_equal:now', 'expected_check_out_at' => 'required|date|after:check_in_at|after:now',
-            'room_charge' => 'required|integer|min:0|max:100000000', 'deposit' => 'required|integer|min:0|lte:room_charge',
+            'room_charge' => 'required|integer|min:0|max:100000000', 'deposit' => 'required|integer|min:0|max:100000000',
             'method' => ['required', Rule::in(['cash', 'transfer', 'card'])],
             'payment_term' => ['required', Rule::in(['immediate', 'credit'])],
             'payment_receipt' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            ...StayOccupancy::rules($request->routeIs('stays.store')),
+            'identity_guest_id' => 'nullable|integer',
             'identity_documents' => 'nullable|array|max:5',
             'identity_documents.*' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
         ]);
@@ -89,7 +92,7 @@ class StayController extends Controller
 
     public function show(Stay $stay)
     {
-        $stay->load(['room', 'charges.creator', 'payments.creator', 'payments.reversals', 'identityDocuments']);
+        $stay->load(['room', 'charges.creator', 'payments.creator', 'payments.reversals', 'identityDocuments.guest', 'guests', 'extraBeds']);
 
         return view('stays.show', compact('stay'));
     }
@@ -99,7 +102,7 @@ class StayController extends Controller
         if ($stay->check_out_at && ! auth()->user()->isManager()) {
             abort(403);
         }
-        $stay->load('identityDocuments');
+        $stay->load(['identityDocuments', 'guests' => fn ($guests) => $guests->withCount('identityDocuments'), 'room']);
 
         return view('stays.edit', compact('stay'));
     }
@@ -109,11 +112,16 @@ class StayController extends Controller
         if ($stay->check_out_at && ! $request->user()->isManager()) {
             throw ValidationException::withMessages(['operation' => __('ထွက်ပြီးသောဧည့်သည်ကို မန်နေဂျာသာ ပြင်နိုင်ပါသည်။')]);
         }
+        if ($request->boolean('companions_present')) {
+            $request->merge(['companions' => $request->input('companions', [])]);
+        }
         $data = $request->validate([
             'guest_name' => 'required|string|max:150', 'gender' => ['required', Rule::in(array_keys(Stay::GENDERS))], 'phone' => 'required|string|max:40', 'notes' => 'nullable|string|max:2000',
             'expected_check_out_at' => $stay->check_out_at
                 ? 'required|date|after:'.$stay->check_in_at->toDateTimeString()
                 : 'required|date|after:'.$stay->check_in_at->toDateTimeString().'|after:now',
+            ...StayOccupancy::rules($request->routeIs('stays.store')),
+            'identity_guest_id' => 'nullable|integer',
             'identity_documents' => 'nullable|array|max:5',
             'identity_documents.*' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
         ]);
@@ -127,17 +135,32 @@ class StayController extends Controller
                 if ($locked->check_out_at && ! auth()->user()->isManager()) {
                     throw ValidationException::withMessages(['operation' => __('ထွက်ပြီးသောဧည့်သည်ကို မန်နေဂျာသာ ပြင်နိုင်ပါသည်။')]);
                 }
-                if ($locked->identityDocuments()->count() + count($paths) > 5) {
-                    throw ValidationException::withMessages(['identity_documents' => __('အထောက်အထားဖိုင် စုစုပေါင်း ၅ ဖိုင်အထိသာ တင်နိုင်ပါသည်။')]);
+                $occupancy = app(StayOccupancy::class);
+                if (array_key_exists('companions', $data)) {
+                    $beds = (int) $locked->extraBeds()->whereNull('returned_at')->sum('quantity');
+                    if (! $locked->check_out_at) {
+                        $occupancy->validateCapacity($room, 1 + count($data['companions']), $beds);
+                    }
                 }
+                $companions = array_key_exists('companions', $data) ? ['companions' => $data['companions']] : [];
+                $guestId = $data['identity_guest_id'] ?? null;
+                unset($data['companions'], $data['identity_guest_id']);
                 if (! $locked->check_out_at) {
                     app(RoomAvailability::class)->ensureNoReservationOverlap($room, $locked->check_in_at->toDateTimeString(), $data['expected_check_out_at'], $locked->reservation_id, 'expected_check_out_at');
                 }
                 $before = $locked->toArray();
                 $locked->update($data);
                 Audit::record('stay.updated', $locked, $before, $locked->toArray());
+                $occupancy->syncGuests($locked, $companions);
+                $owner = $guestId ? $locked->guests()->find($guestId) : $locked->guests()->where('is_primary', true)->first();
+                if (! $owner) {
+                    throw ValidationException::withMessages(['identity_guest_id' => __('Choose a guest belonging to this stay.')]);
+                }
+                if ($owner->identityDocuments()->count() + count($paths) > 5) {
+                    throw ValidationException::withMessages(['identity_documents' => __('Each guest can have up to five identity documents.')]);
+                }
                 foreach ($paths as $path) {
-                    $document = $locked->identityDocuments()->create(['path' => $path]);
+                    $document = $locked->identityDocuments()->create(['path' => $path, 'stay_guest_id' => $owner->id]);
                     Audit::record('stay.identity_added', $document, null, $document->toArray());
                 }
             });

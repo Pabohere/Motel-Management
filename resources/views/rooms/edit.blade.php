@@ -7,6 +7,7 @@
     <label>{{ __('အထပ်') }}<select name="floor_id" required>@foreach($floors as $floor)<option value="{{ $floor->id }}" @selected(old('floor_id', $room->floor_id) == $floor->id)>{{ $floor->number }} {{ __('ထပ်') }}</option>@endforeach</select></label>
     <label>{{ __('အခန်းအမျိုးအစား') }}<select name="room_type_id" required>@foreach($roomTypes as $roomType)<option value="{{ $roomType->id }}" @selected(old('room_type_id', $room->room_type_id) == $roomType->id)>{{ $roomType->name }}</option>@endforeach</select></label>
     <label>{{ __('တစ်ညနှုန်း (MMK)') }}<input name="rate" value="{{ old('rate', $room->rate) }}" type="number" min="1" max="100000000" step="1" required></label>
+    @include('rooms.occupancy-fields')
     <button class="btn">{{ __('သိမ်းမည်') }}</button>
 </form></section>
 <div class="record-actions top-space"><form method="post" action="{{ route('rooms.destroy', $room) }}" data-confirm="{{ __('ဤအခန်းကို archive ထဲရွှေ့မည်။ ပြန်ယူနိုင်ပါသည်။ ဆက်လုပ်မလား။') }}">@csrf @method('DELETE')<button class="btn danger" @disabled($room->status === 'occupied')>{{ __('အခန်းဖျက်ရန်') }}</button></form><a href="{{ route('rooms.show', $room) }}">{{ __('အခန်းအသေးစိတ်') }}</a></div>

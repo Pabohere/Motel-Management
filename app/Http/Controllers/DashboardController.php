@@ -18,8 +18,8 @@ class DashboardController extends Controller
         $counts = $rooms->countBy('status');
         $start = today();
         $end = today()->addDay();
-        $checkIns = Stay::where('check_in_at', '>=', $start)->where('check_in_at', '<', $end)->count();
-        $checkOuts = Stay::where('check_out_at', '>=', $start)->where('check_out_at', '<', $end)->count();
+        $checkIns = Stay::where('check_in_at', '>=', $start)->where('check_in_at', '<', $end)->withCount('guests')->get()->sum('guest_count');
+        $checkOuts = Stay::where('check_out_at', '>=', $start)->where('check_out_at', '<', $end)->withCount('guests')->get()->sum('guest_count');
         $received = Payment::where('created_at', '>=', $start)->where('created_at', '<', $end)->sum('amount');
         $activeStays = Stay::with('room')->withFinancialTotals()->whereNull('check_out_at')->orderByDesc('check_in_at')->orderByDesc('id')->get();
 

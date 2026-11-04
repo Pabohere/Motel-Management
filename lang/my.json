@@ -156,5 +156,18 @@
     "Stay reference": "တည်းခိုမှုအမှတ်",
     "Check-in time": "ဝင်ချိန်",
     "Search stays with this phone": "ဤဖုန်းနံပါတ်ဖြင့် တည်းခိုမှုများ ရှာရန်",
-    "Stay activity history": "တည်းခိုမှု ပြောင်းလဲချက်မှတ်တမ်း"
+    "Stay activity history": "တည်းခိုမှု ပြောင်းလဲချက်မှတ်တမ်း",
+    "The extra-bed quantity exceeds this room’s limit.": "Extra bed အရေအတွက်သည် ဤအခန်းအတွက် သတ်မှတ်ထားသော အများဆုံးအရေအတွက်ထက် ကျော်နေပါသည်။",
+    "Adults and children together exceed the room capacity, including extra beds.": "လူကြီးနှင့် ကလေး စုစုပေါင်းသည် Extra bed အပါအဝင် အခန်းလက်ခံနိုင်သည့် လူဦးရေထက် ကျော်နေပါသည်။",
+    "Extra-bed charges cannot exceed 100,000,000 MMK.": "Extra bed ခ စုစုပေါင်းသည် ကျပ်သန်း ၁၀၀ ထက် မကျော်ရပါ။",
+    "Choose a guest belonging to this stay.": "ဤတည်းခိုမှုတွင် ပါဝင်သော ဧည့်သည်ကိုသာ ရွေးပါ။",
+    "This submission has already been used with different details.": "ဤတင်သွင်းမှုကို အခြားအချက်အလက်ဖြင့် အသုံးပြုပြီးဖြစ်သည်။ စာမျက်နှာပြန်ဖွင့်ပြီး ထပ်တင်ပါ။",
+    "Extra beds can only be changed during an active stay.": "လက်ရှိတည်းခိုနေစဉ်တွင်သာ Extra bed ပြောင်းနိုင်ပါသည်။",
+    "Extra bed": "အပိုကုတင်",
+    "Extra beds and their charge have been recorded.": "Extra bed နှင့် ကျသင့်ငွေကို မှတ်တမ်းတင်ပြီးပါပြီ။",
+    "Beds returned. The agreed charge is preserved.": "Bed ပြန်သိမ်းပြီးပါပြီ။ သဘောတူထားသော ကျသင့်ငွေကို ဆက်ထိန်းထားပါသည်။",
+    "Payment cannot exceed the total stay charge (maximum 100,000,000 MMK).": "ပေးငွေသည် တည်းခိုမှု စုစုပေါင်းကျသင့်ငွေထက် မများရပါ။ စုစုပေါင်းကျသင့်ငွေသည် ကျပ်သန်း ၁၀၀ ထက် မကျော်ရပါ။",
+    "Immediate payment requires the room charge plus extra-bed charges. Choose credit for partial payment.": "လက်ငင်းဆို အခန်းခနှင့် Extra bed ခ အပြည့်ပေးရမည်။ တစ်စိတ်တစ်ပိုင်းပေးရန် အကြွေးကို ရွေးပါ။",
+    "Each guest can have up to five identity documents.": "ဧည့်သည်တစ်ဦးလျှင် အထောက်အထားဖိုင် ၅ ဖိုင်အထိသာ တင်နိုင်ပါသည်။",
+    "The total room and extra-bed quote cannot exceed 100,000,000 MMK.": "အခန်းခနှင့် Extra bed ခ စုစုပေါင်းသည် ကျပ်သန်း ၁၀၀ ထက် မကျော်ရပါ။"
 }

@@ -39,6 +39,7 @@
         <label>{{ __('အထပ်') }}<select name="floor_id" required><option value="">{{ __('အထပ်ရွေးပါ') }}</option>@foreach($floors as $floor)<option value="{{ $floor->id }}" @selected(old('floor_id') == $floor->id)>{{ $floor->number }} {{ __('ထပ်') }}</option>@endforeach</select></label>
         <label>{{ __('အခန်းအမျိုးအစား') }}<select name="room_type_id" required><option value="">{{ __('အမျိုးအစားရွေးပါ') }}</option>@foreach($roomTypes as $roomType)<option value="{{ $roomType->id }}" @selected(old('room_type_id') == $roomType->id)>{{ $roomType->name }}</option>@endforeach</select></label>
         <label>{{ __('တစ်ညနှုန်း (MMK)') }}<input name="rate" type="number" min="1" max="100000000" step="1" value="{{ old('rate') }}" required></label>
+        @include('rooms.occupancy-fields', ['room' => null])
         <div class="form-action"><button class="btn" @disabled($floors->isEmpty() || $roomTypes->isEmpty())>{{ __('+ အခန်းထည့်မည်') }}</button></div>
     </form>
 </section>

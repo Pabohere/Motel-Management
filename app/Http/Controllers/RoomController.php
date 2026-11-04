@@ -7,6 +7,7 @@ use App\Models\Room;
 use App\Models\RoomType;
 use App\Services\Audit;
 use App\Services\FrontDesk;
+use App\Services\StayOccupancy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -156,7 +157,15 @@ class RoomController extends Controller
         DB::transaction(function () use ($room, $data) {
             $locked = Room::lockForUpdate()->findOrFail($room->id);
             $before = $locked->toArray();
-            $locked->update($data);
+            $locked->fill($data);
+            $occupancy = app(StayOccupancy::class);
+            if ($active = $locked->activeStay()->first()) {
+                $occupancy->validateCapacity($locked, $active->guest_count, (int) $active->extraBeds()->whereNull('returned_at')->sum('quantity'));
+            }
+            foreach ($locked->reservations()->where('status', 'booked')->get() as $booking) {
+                $occupancy->validateCapacity($locked, 1 + count($booking->companions ?? []), $booking->extra_beds);
+            }
+            $locked->save();
             Audit::record('room.updated', $locked, $before, $locked->toArray());
         });
 
@@ -209,6 +218,9 @@ class RoomController extends Controller
             'floor_id' => ['required', 'integer', Rule::exists('floors', 'id')],
             'room_type_id' => ['required', 'integer', Rule::exists('room_types', 'id')],
             'rate' => ['required', 'integer', 'between:1,100000000'],
+            'capacity' => ['sometimes', 'required', 'integer', 'between:1,50'],
+            'max_extra_beds' => ['sometimes', 'required', 'integer', 'between:0,10'],
+            'extra_bed_rate' => ['sometimes', 'required', 'integer', 'between:0,100000000'],
         ];
     }
 }

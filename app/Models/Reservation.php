@@ -10,7 +10,7 @@ class Reservation extends Model
 
     protected function casts(): array
     {
-        return ['arrival_at' => 'datetime', 'departure_at' => 'datetime', 'room_charge' => 'integer'];
+        return ['companions' => 'array', 'extra_beds' => 'integer', 'extra_bed_nights' => 'integer', 'extra_bed_rate' => 'integer', 'arrival_at' => 'datetime', 'departure_at' => 'datetime', 'room_charge' => 'integer'];
     }
 
     public function room()

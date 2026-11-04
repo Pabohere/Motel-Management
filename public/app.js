@@ -39,8 +39,13 @@ const deposit = document.querySelector('input[name="deposit"]');
 const paymentTerm = document.querySelector('select[name="payment_term"]');
 let manualDeposit = deposit?.dataset?.manual === 'true';
 let manualCharge = charge?.dataset.manual === 'true';
+const extraBeds = document.getElementById('extra-beds');
+const extraBedNights = document.getElementById('extra-bed-nights');
+const extraBedRate = document.getElementById('extra-bed-rate');
+let manualBedNights = extraBedNights?.dataset.manual === 'true';
+let manualBedRate = extraBedRate?.dataset.manual === 'true';
 function roomQuote() {
-  const rate = Number(room?.selectedOptions[0]?.dataset.rate);
+  const rate = Number(room?.selectedOptions?.[0]?.dataset.rate);
   const arrival = checkIn?.value;
   const departure = checkOut?.value;
   if (!Number.isFinite(rate) || !arrival || !departure || !checkIn.validity.valid || !checkOut.validity.valid) return null;
@@ -55,13 +60,24 @@ function refreshPricing(recalculate = false) {
   if (!priceSummary) return;
   const number = new Intl.NumberFormat(document.documentElement.lang === 'my' ? 'my-MM' : 'en');
   const write = (id, value) => { const output = document.getElementById(id); if (output) output.textContent = value; };
-  const amount = charge.valueAsNumber;
+  const selected = room?.selectedOptions?.[0]?.dataset;
+  if (extraBedNights && quote && !manualBedNights) extraBedNights.value = quote.nights;
+  if (extraBedRate && selected?.bedRate !== undefined && !manualBedRate) extraBedRate.value = selected.bedRate;
+  if (extraBeds && selected?.maxBeds !== undefined) extraBeds.max = selected.maxBeds;
+  const bedAmount = extraBeds && extraBedNights && extraBedRate
+    ? extraBeds.valueAsNumber * extraBedNights.valueAsNumber * extraBedRate.valueAsNumber : 0;
+  const roomAmount = charge.valueAsNumber;
+  const amount = roomAmount + bedAmount;
+  write('quote-beds', Number.isFinite(bedAmount) ? number.format(bedAmount) : '—');
+  write('quote-grand-total', Number.isFinite(amount) ? number.format(amount) : '—');
+  const hint = document.getElementById('room-capacity-hint');
+  if (hint && selected?.capacity) hint.textContent = hint.dataset.template.replace('{capacity}', selected.capacity).replace('{beds}', selected.maxBeds);
   if (deposit && paymentTerm?.value === 'immediate' && !manualDeposit && Number.isFinite(amount)) deposit.value = amount;
   const paid = deposit ? deposit.valueAsNumber : 0;
   write('quote-rate', quote ? number.format(quote.rate) : '—');
   write('quote-nights', quote ? number.format(quote.nights) : '—');
   write('quote-total', quote ? number.format(quote.total) : '—');
-  write('quote-charge', Number.isFinite(amount) ? number.format(amount) : '—');
+  write('quote-charge', Number.isFinite(roomAmount) ? number.format(roomAmount) : '—');
   write('quote-paid', Number.isFinite(paid) ? number.format(paid) : '—');
   write('quote-balance', Number.isFinite(amount) && Number.isFinite(paid) ? number.format(amount - paid) : '—');
   document.getElementById('quote-override').hidden = !manualCharge;
@@ -72,7 +88,7 @@ function calculateRate() {
   manualCharge = false;
   refreshPricing(true);
 }
-room?.addEventListener('change', () => refreshPricing(true));
+room?.addEventListener('change', () => { manualBedRate = false; refreshPricing(true); });
 checkIn?.addEventListener('input', () => refreshPricing(true));
 checkIn?.addEventListener('change', () => refreshPricing(true));
 checkOut?.addEventListener('input', () => refreshPricing(true));
@@ -81,7 +97,32 @@ charge?.addEventListener('input', () => { manualCharge = true; refreshPricing();
 deposit?.addEventListener('input', () => { manualDeposit = true; refreshPricing(); });
 paymentTerm?.addEventListener('change', () => { manualDeposit = false; if (deposit && paymentTerm.value === 'credit') deposit.value = 0; refreshPricing(); });
 document.getElementById('calculate-rate')?.addEventListener('click', calculateRate);
+extraBeds?.addEventListener('input', () => refreshPricing());
+extraBedNights?.addEventListener('input', () => { manualBedNights = true; refreshPricing(); });
+extraBedRate?.addEventListener('input', () => { manualBedRate = true; refreshPricing(); });
 refreshPricing(!manualCharge);
+
+document.querySelectorAll('[data-companions]').forEach(section => {
+  const rows = section.querySelector('[data-companion-rows]');
+  const template = section.querySelector('[data-companion-template]');
+  let nextIndex = Math.max(-1, ...Array.from(rows.querySelectorAll('input[name]')).map(input => Number(input.name.match(/companions\[(\d+)\]/)?.[1] ?? -1))) + 1;
+  const refreshCount = () => {
+    const count = rows.querySelectorAll('[data-companion-row]').length + 1;
+    section.querySelector('[data-guest-count]').textContent = `${count} ${document.documentElement.lang === 'my' ? 'ဦး (အဓိကဆက်သွယ်သူအပါအဝင်)' : 'guests including the primary contact'}`;
+  };
+  section.querySelector('[data-add-companion]').addEventListener('click', () => {
+    if (rows.querySelectorAll('[data-companion-row]').length >= 49) return;
+    rows.insertAdjacentHTML('beforeend', template.innerHTML.replaceAll('__INDEX__', String(nextIndex++)));
+    refreshCount();
+  });
+  rows.addEventListener('click', event => {
+    const button = event.target.closest('[data-remove-companion]');
+    if (!button) return;
+    button.closest('[data-companion-row]').remove();
+    refreshCount();
+  });
+  refreshCount();
+});
 
 // Dashboard filters only affect the visible view; records stay on the server.
 const roomMapFilter = document.getElementById('room-map-filter');

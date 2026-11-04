@@ -31,6 +31,21 @@ class Stay extends Model
         return $this->belongsTo(Reservation::class);
     }
 
+    public function guests(): HasMany
+    {
+        return $this->hasMany(StayGuest::class)->orderByDesc('is_primary')->orderBy('id');
+    }
+
+    public function extraBeds(): HasMany
+    {
+        return $this->hasMany(StayExtraBed::class)->orderBy('id');
+    }
+
+    public function getGuestCountAttribute(): int
+    {
+        return max(1, (int) ($this->attributes['guests_count'] ?? ($this->relationLoaded('guests') ? $this->guests->count() : $this->guests()->count())));
+    }
+
     public function charges()
     {
         return $this->hasMany(Charge::class);

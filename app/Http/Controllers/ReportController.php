@@ -18,8 +18,8 @@ class ReportController extends Controller
         $date = $data['date'] ?? today()->toDateString();
         $start = Carbon::parse($date)->startOfDay();
         $end = $start->copy()->addDay();
-        $checkIns = Stay::withTrashed()->with('room')->where('check_in_at', '>=', $start)->where('check_in_at', '<', $end)->get();
-        $checkOuts = Stay::withTrashed()->with('room')->where('check_out_at', '>=', $start)->where('check_out_at', '<', $end)->get();
+        $checkIns = Stay::withTrashed()->with('room')->withCount('guests')->where('check_in_at', '>=', $start)->where('check_in_at', '<', $end)->get();
+        $checkOuts = Stay::withTrashed()->with('room')->withCount('guests')->where('check_out_at', '>=', $start)->where('check_out_at', '<', $end)->get();
         $payments = Payment::with(['stay.room', 'creator'])->where('created_at', '>=', $start)->where('created_at', '<', $end)->latest()->get();
         $asOf = $end->isFuture() ? now() : $end->copy()->subSecond();
         $occupied = Stay::withTrashed()->where('check_in_at', '<=', $asOf)->where(fn ($q) => $q->whereNull('check_out_at')->orWhere('check_out_at', '>', $asOf))->distinct()->count('room_id');

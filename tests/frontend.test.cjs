@@ -36,7 +36,7 @@ test('empty or invalid arrival clears the minimum without a script error', () =>
   assert.equal(checkOut.min, undefined);
 });
 
-function pricingForm(manual = false, term = null) {
+function pricingForm(manual = false, term = null, beds = null) {
   const controls = {};
   function input(id, value = '') {
     const handlers = {};
@@ -53,8 +53,15 @@ function pricingForm(manual = false, term = null) {
   input('check-out', '2026-11-04T12:00');
   input('room-charge', manual ? '42000' : '0').dataset.manual = String(manual);
   input('deposit', '10000');
+  if (beds) {
+    input('extra-beds', String(beds.quantity));
+    input('extra-bed-nights', String(beds.nights ?? 1)).dataset.manual = String(beds.manualNights ?? false);
+    input('extra-bed-rate', String(beds.rate ?? 5000)).dataset.manual = String(beds.manualRate ?? false);
+    controls['room-select'].selectedOptions[0].dataset.bedRate = '5000';
+    controls['room-select'].selectedOptions[0].dataset.maxBeds = '2';
+  }
   if (term) input('payment-term', term);
-  for (const id of ['price-summary', 'quote-rate', 'quote-nights', 'quote-total', 'quote-charge', 'quote-paid', 'quote-balance', 'quote-override', 'quote-invalid', 'calculate-rate']) input(id);
+  for (const id of ['price-summary', 'quote-rate', 'quote-nights', 'quote-total', 'quote-charge', 'quote-paid', 'quote-balance', 'quote-override', 'quote-invalid', 'quote-beds', 'quote-grand-total', 'calculate-rate']) input(id);
   const document = { documentElement: { lang: 'en' }, querySelectorAll: () => [],
     querySelector: selector => selector === 'input[name="deposit"]' ? controls.deposit : selector === 'select[name="payment_term"]' ? controls['payment-term'] ?? null : null,
     getElementById: id => controls[id] ?? null };
@@ -134,4 +141,36 @@ test('returning with browser history restores only buttons disabled by submissio
   assert.equal(changed.disabled,false);
   assert.equal(changed.dataset.submissionDisabled,undefined);
   assert.equal(temporary.removed,true);
+});
+
+
+test('extra-bed quantity, nights and rate are included in full payment and balance', () => {
+  const c = pricingForm(false, 'immediate', {quantity: 1});
+  assert.equal(c['quote-beds'].textContent, '5,000');
+  assert.equal(c['quote-grand-total'].textContent, '40,000');
+  assert.equal(Number(c.deposit.value), 40000);
+  assert.equal(c.deposit.max, 40000);
+  c['check-out'].value = '2026-11-06T12:00';
+  c['check-out'].fire('input');
+  assert.equal(Number(c['extra-bed-nights'].value), 3);
+  assert.equal(c['quote-beds'].textContent, '15,000');
+  assert.equal(Number(c.deposit.value), 120000);
+  c['extra-beds'].value = '2';
+  c['extra-beds'].fire('input');
+  assert.equal(c['quote-grand-total'].textContent, '135,000');
+  c['extra-bed-rate'].value = '0';
+  c['extra-bed-rate'].fire('input');
+  assert.equal(Number(c.deposit.value), 105000);
+});
+
+test('manual bed quotes and partial payments survive date changes', () => {
+  const c = pricingForm(false, 'credit', {quantity: 1, nights: 2, rate: 7000, manualNights: true, manualRate: true});
+  c.deposit.value = '20000';
+  c.deposit.fire('input');
+  c['check-out'].value = '2026-11-06T12:00';
+  c['check-out'].fire('input');
+  assert.equal(Number(c['extra-bed-nights'].value), 2);
+  assert.equal(Number(c['extra-bed-rate'].value), 7000);
+  assert.equal(c['quote-grand-total'].textContent, '119,000');
+  assert.equal(c['quote-balance'].textContent, '99,000');
 });

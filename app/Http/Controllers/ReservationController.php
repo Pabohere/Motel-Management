@@ -8,6 +8,7 @@ use App\Models\Stay;
 use App\Services\Audit;
 use App\Services\FrontDesk;
 use App\Services\RoomAvailability;
+use App\Services\StayOccupancy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,16 +45,23 @@ class ReservationController extends Controller
             'phone' => 'required|string|max:40', 'notes' => 'nullable|string|max:2000',
             'arrival_at' => 'required|date|after:now', 'departure_at' => 'required|date|after:arrival_at',
             'room_charge' => 'required|integer|min:0|max:100000000',
+            ...StayOccupancy::rules(),
         ]);
         DB::transaction(function () use ($data): void {
             $room = Room::lockForUpdate()->findOrFail($data['room_id']);
             if ($room->status === 'maintenance') {
                 throw ValidationException::withMessages(['room_id' => __('ပြင်ဆင်နေသောအခန်းကို ကြိုတင်ချိန်း၍မရပါ။')]);
             }
+            app(StayOccupancy::class)->validateCapacity($room, 1 + count($data['companions'] ?? []), (int) ($data['extra_beds'] ?? 0));
+            $bedTotal = app(StayOccupancy::class)->bedTotal((int) ($data['extra_beds'] ?? 0), (int) ($data['extra_bed_nights'] ?? 1), (int) ($data['extra_bed_rate'] ?? 0));
+            if ((int) $data['room_charge'] + $bedTotal > 100000000) {
+                throw ValidationException::withMessages(['room_charge' => __('The total room and extra-bed quote cannot exceed 100,000,000 MMK.')]);
+            }
             app(RoomAvailability::class)->ensureNoReservationOverlap($room, $data['arrival_at'], $data['departure_at'], field: 'arrival_at');
             if ($room->activeStay()->where('expected_check_out_at', '>', $data['arrival_at'])->exists()) {
                 throw ValidationException::withMessages(['arrival_at' => __('လက်ရှိတည်းခိုမှုနှင့် အချိန်တိုက်နေပါသည်။')]);
             }
+            $data['companions'] = collect($data['companions'] ?? [])->map(fn ($guest) => collect($guest)->except('id')->all())->all();
             $reservation = Reservation::create([...$data, 'status' => 'booked', 'created_by' => auth()->id()]);
             Audit::record('reservation.created', $reservation, null, $reservation->toArray());
         }, 3);
@@ -74,7 +82,8 @@ class ReservationController extends Controller
                 'phone' => $booking->phone, 'notes' => $booking->notes, 'check_in_at' => now(),
                 'expected_check_out_at' => $booking->departure_at, 'room_charge' => $booking->room_charge,
                 'deposit' => 0, 'method' => 'cash', 'source' => 'booking', 'payment_term' => 'credit',
-                'reservation_id' => $booking->id,
+                'reservation_id' => $booking->id, 'companions' => $booking->companions ?? [],
+                'extra_beds' => $booking->extra_beds, 'extra_bed_nights' => $booking->extra_bed_nights, 'extra_bed_rate' => $booking->extra_bed_rate,
             ]);
             $before = $booking->toArray();
             $booking->update(['status' => 'checked_in']);
@@ -111,21 +120,32 @@ class ReservationController extends Controller
 
     public function update(Request $request, Reservation $reservation): RedirectResponse
     {
+        if ($request->boolean('companions_present')) {
+            $request->merge(['companions' => $request->input('companions', [])]);
+        }
         $data = $request->validate([
             'arrival_at' => 'required|date', 'departure_at' => 'required|date|after:arrival_at|after:now',
             'room_charge' => 'required|integer|min:0|max:100000000',
+            ...StayOccupancy::rules(),
         ]);
         DB::transaction(function () use ($reservation, $data): void {
             $room = Room::lockForUpdate()->findOrFail($reservation->room_id);
             $booking = Reservation::lockForUpdate()->findOrFail($reservation->id);
+            $data = [...$booking->only(['companions', 'extra_beds', 'extra_bed_nights', 'extra_bed_rate']), ...$data];
             if ($booking->status !== 'booked' || $room->status === 'maintenance') {
                 throw ValidationException::withMessages(['operation' => __('Only a booked reservation in an operational room can be changed.')]);
+            }
+            app(StayOccupancy::class)->validateCapacity($room, 1 + count($data['companions'] ?? []), (int) ($data['extra_beds'] ?? 0));
+            $bedTotal = app(StayOccupancy::class)->bedTotal((int) ($data['extra_beds'] ?? 0), (int) ($data['extra_bed_nights'] ?? 1), (int) ($data['extra_bed_rate'] ?? 0));
+            if ((int) $data['room_charge'] + $bedTotal > 100000000) {
+                throw ValidationException::withMessages(['room_charge' => __('The total room and extra-bed quote cannot exceed 100,000,000 MMK.')]);
             }
             app(RoomAvailability::class)->ensureNoReservationOverlap($room, $data['arrival_at'], $data['departure_at'], $booking->id, 'arrival_at');
             if ($room->activeStay()->where('expected_check_out_at', '>', $data['arrival_at'])->exists()) {
                 throw ValidationException::withMessages(['arrival_at' => __('The selected dates overlap an active stay.')]);
             }
             $before = $booking->toArray();
+            $data['companions'] = collect($data['companions'] ?? [])->map(fn ($guest) => collect($guest)->except('id')->all())->all();
             $booking->update($data);
             Audit::record('reservation.updated', $booking, $before, $booking->toArray());
         }, 3);

@@ -20,7 +20,7 @@
     <tbody>
     @forelse($stays as $stay)
         <tr data-row-link="{{ route('stays.show', $stay) }}" tabindex="0" role="link" aria-label="{{ $stay->guest_name }} {{ __('အသေးစိတ်ကြည့်ရန်') }}">
-            <td><strong>{{ $stay->guest_name }}</strong><small>{{ $stay->phone }}</small><div class="record-actions compact">
+            <td><strong>{{ $stay->guest_name }}</strong><small>{{ $stay->guest_count }} {{ __('ဦး') }}</small><small>{{ $stay->phone }}</small><div class="record-actions compact">
                 @if($stay->trashed())
                     <form method="post" action="{{ route('stays.restore', $stay) }}">@csrf<button class="text-link">{{ __('ပြန်ယူရန်') }}</button></form>
                 @else

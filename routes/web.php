@@ -12,6 +12,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StayController;
+use App\Http\Controllers\StayExtraBedController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -54,6 +55,8 @@ Route::middleware(['auth', 'active', 'private'])->group(function () {
     Route::get('/stays/{stay}/identity/{document}', [StayController::class, 'identityDocument'])->withTrashed(['stay'])->name('stays.identity.show');
     Route::get('/stays/{stay}/payments/{payment}/receipt', [StayController::class, 'paymentReceipt'])->withTrashed()->name('stays.payments.receipt');
     Route::put('/stays/{stay}', [StayController::class, 'update'])->name('stays.update');
+    Route::post('/stays/{stay}/extra-beds', [StayExtraBedController::class, 'store'])->name('stays.extra-beds.store');
+    Route::patch('/stays/{stay}/extra-beds/{bed}', [StayExtraBedController::class, 'update'])->name('stays.extra-beds.return');
     Route::post('/stays/{stay}/charges', [StayController::class, 'charge'])->name('stays.charges');
     Route::post('/stays/{stay}/payments', [StayController::class, 'payment'])->withTrashed()->middleware('throttle:30,1')->name('stays.payments');
     Route::post('/stays/{stay}/checkout', [StayController::class, 'checkOut'])->name('stays.checkout');

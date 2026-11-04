@@ -22,7 +22,8 @@ class FrontDesk
         return DB::transaction(function () use ($data, $identityPaths) {
             $room = Room::lockForUpdate()->findOrFail($data['room_id']);
             $data['payment_term'] = $data['payment_term'] ?? 'immediate';
-            $fingerprint = SubmissionKey::fingerprint($data, ['room_id', 'guest_name', 'gender', 'phone', 'check_in_at', 'expected_check_out_at', 'room_charge', 'deposit', 'method', 'payment_term', 'notes', 'receipt_hash', 'identity_hashes']);
+            $data = [...$data, ...validator($data, StayOccupancy::rules())->validate()];
+            $fingerprint = SubmissionKey::fingerprint($data, ['companions', 'extra_beds', 'extra_bed_nights', 'extra_bed_rate', 'room_id', 'guest_name', 'gender', 'phone', 'check_in_at', 'expected_check_out_at', 'room_charge', 'deposit', 'method', 'payment_term', 'notes', 'receipt_hash', 'identity_hashes']);
             if (! empty($data['request_key']) && ($existing = Stay::withTrashed()->where('request_key', $data['request_key'])->first())) {
                 SubmissionKey::requireSame($existing, $fingerprint);
 
@@ -35,8 +36,15 @@ class FrontDesk
             if (! in_array($data['payment_term'], ['immediate', 'credit'], true)) {
                 throw ValidationException::withMessages(['payment_term' => __('Choose immediate or credit payment.')]);
             }
-            if ($data['payment_term'] === 'immediate' && (int) ($data['deposit'] ?? 0) !== (int) $data['room_charge']) {
-                throw ValidationException::withMessages(['deposit' => __('Immediate payment requires the full room charge. Choose credit for partial payment.')]);
+            $occupancy = app(StayOccupancy::class);
+            $beds = (int) ($data['extra_beds'] ?? 0);
+            $occupancy->validateCapacity($room, 1 + count($data['companions'] ?? []), $beds);
+            $total = (int) $data['room_charge'] + $occupancy->bedTotal($beds, (int) ($data['extra_bed_nights'] ?? 1), (int) ($data['extra_bed_rate'] ?? 0));
+            if ($total > 100000000 || (int) ($data['deposit'] ?? 0) > $total) {
+                throw ValidationException::withMessages(['deposit' => __('Payment cannot exceed the total stay charge (maximum 100,000,000 MMK).')]);
+            }
+            if ($data['payment_term'] === 'immediate' && (int) ($data['deposit'] ?? 0) !== $total) {
+                throw ValidationException::withMessages(['deposit' => __('Immediate payment requires the room charge plus extra-bed charges. Choose credit for partial payment.')]);
             }
             $stay = Stay::create([
                 ...collect($data)->only(['guest_name', 'gender', 'phone', 'notes', 'check_in_at', 'expected_check_out_at', 'room_charge'])->all(),
@@ -45,8 +53,13 @@ class FrontDesk
                 'reservation_id' => $data['reservation_id'] ?? null,
                 'request_key' => $data['request_key'] ?? null, 'request_fingerprint' => $fingerprint,
             ]);
+            if ($beds > 0) {
+                $occupancy->addBeds($stay, ['quantity' => $beds, 'nights' => $data['extra_bed_nights'], 'rate' => $data['extra_bed_rate']]);
+            }
+            $occupancy->syncGuests($stay, $data);
+            $primary = $stay->guests()->where('is_primary', true)->firstOrFail();
             foreach ($identityPaths as $path) {
-                $document = $stay->identityDocuments()->create(['path' => $path]);
+                $document = $stay->identityDocuments()->create(['path' => $path, 'stay_guest_id' => $primary->id]);
                 Audit::record('stay.identity_added', $document, null, $document->toArray());
             }
             $before = $room->toArray();
@@ -129,6 +142,11 @@ class FrontDesk
             self::require($locked->balance === 0 || $locked->payment_term === 'credit', __('ကျန်ငွေကို အရင်ရှင်းပေးပါ။'));
             $before = $locked->toArray();
             $locked->update(['check_out_at' => now(), 'active_room_id' => null]);
+            foreach ($locked->extraBeds()->whereNull('returned_at')->get() as $bed) {
+                $bedBefore = $bed->toArray();
+                $bed->update(['returned_at' => now()]);
+                Audit::record('extra_bed.returned', $bed, $bedBefore, $bed->toArray());
+            }
             Audit::record('stay.check_out', $locked, $before, $locked->toArray());
             if ($locked->reservation_id) {
                 $booking = $locked->reservation()->lockForUpdate()->firstOrFail();

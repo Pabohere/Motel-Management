@@ -1,7 +1,7 @@
 @if(auth()->user()->canViewDocuments())
 <div class="identity-heading" id="identity-gallery">
     <div><h3>{{ __('မှတ်ပုံတင် / အထောက်အထား') }}</h3><p class="muted">{{ __('ပုံကိုနှိပ်၍ ဤစာမျက်နှာပေါ်တွင် အကြီးကြည့်နိုင်ပါသည်။') }}</p></div>
-    <span class="count-pill">{{ $stay->identityDocuments->count() }} / 5</span>
+    <span class="count-pill">{{ $stay->identityDocuments->count() }}</span>
 </div>
 @if($stay->identityDocuments->isEmpty())
     <p class="muted">{{ __('အထောက်အထား မတင်ရသေးပါ။') }}</p>
@@ -15,7 +15,7 @@
                 @else
                     <span class="identity-pdf">PDF</span>
                 @endif
-                <span>{{ __('ဖိုင်') }} {{ $loop->iteration }} · {{ __('အကြီးကြည့်ရန်') }}</span>
+                <span>{{ $document->guest?->name ?? $stay->guest_name }} · {{ __('ဖိုင်') }} {{ $loop->iteration }} · {{ __('အကြီးကြည့်ရန်') }}</span>
             </a>
             @if(auth()->user()->isManager())
             <form method="post" action="{{ route('stays.identity.delete', [$stay, $document]) }}" data-confirm="{{ __('Permanently delete this file? The stay record will be kept.') }}">@csrf @method('DELETE')<button class="btn danger">{{ __('Delete file') }}</button></form>
